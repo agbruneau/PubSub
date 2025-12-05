@@ -2,10 +2,10 @@
 tracker.log
 tracker.events
 
-# Binaires Go (ancien format à la racine)
-producer
-tracker
-monitor
+# Binaires Go (à la racine uniquement)
+/producer
+/tracker
+/monitor
 
 # Nouveau répertoire de binaires
 bin/
