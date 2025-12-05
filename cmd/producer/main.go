@@ -1,11 +1,8 @@
-//go:build kafka
-// +build kafka
-
 /*
-Producer entry point for the Kafka Demo PubSub system.
+Point d'entrée du producteur pour le système PubSub de démonstration Kafka.
 
-This is the main entry point for the producer binary.
-Build: go build -o producer.exe ./cmd/producer
+Ceci est le point d'entrée principal pour le binaire du producteur.
+Construction: go build -o producer.exe ./cmd/producer
 */
 package main
 
@@ -19,24 +16,24 @@ import (
 )
 
 func main() {
-	// Load configuration
+	// Charger la configuration
 	config := producer.NewConfig()
 
-	// Create and initialize the producer
+	// Créer et initialiser le producteur
 	prod := producer.New(config)
 	if err := prod.Initialize(); err != nil {
-		fmt.Printf("Fatal error during initialization: %v\n", err)
+		fmt.Printf("Erreur fatale lors de l'initialisation: %v\n", err)
 		os.Exit(1)
 	}
 	defer prod.Close()
 
-	fmt.Println("🟢 Producer is started and ready to send messages...")
-	fmt.Printf("📤 Publishing to topic '%s'\n", config.Topic)
+	fmt.Println("🟢 Le producteur est démarré et prêt à envoyer des messages...")
+	fmt.Printf("📤 Publication vers le sujet '%s'\n", config.Topic)
 
-	// Handle stop signals
+	// Gérer les signaux d'arrêt
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 
-	// Start the production loop
+	// Démarrer la boucle de production
 	prod.Run(sigchan)
 }

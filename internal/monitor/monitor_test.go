@@ -69,7 +69,7 @@ func TestProcessLogMetrics(t *testing.T) {
 	entry := models.LogEntry{
 		Timestamp: time.Now().Format(time.RFC3339),
 		Level:     models.LogLevelINFO,
-		Message:   "Periodic system metrics",
+		Message:   "Métriques système périodiques",
 		Metadata: map[string]interface{}{
 			"messages_received":    float64(100),
 			"messages_processed":   float64(95),
@@ -304,13 +304,13 @@ func TestUpdateLists(t *testing.T) {
 	// Test with empty data
 	logList := CreateLogList()
 	UpdateLogList(logList, []models.LogEntry{})
-	if len(logList.Rows) != 1 || logList.Rows[0] != "Waiting for logs..." {
+	if len(logList.Rows) != 1 || logList.Rows[0] != "En attente de logs..." {
 		t.Error("Empty log list should show waiting message")
 	}
 
 	eventList := CreateEventList()
 	UpdateEventList(eventList, []models.EventEntry{})
-	if len(eventList.Rows) != 1 || eventList.Rows[0] != "Waiting for events..." {
+	if len(eventList.Rows) != 1 || eventList.Rows[0] != "En attente d'événements..." {
 		t.Error("Empty event list should show waiting message")
 	}
 

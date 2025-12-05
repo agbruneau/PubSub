@@ -1,6 +1,3 @@
-//go:build kafka
-// +build kafka
-
 package tracker
 
 import (
@@ -14,16 +11,16 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-// newTestLogger creates a logger that writes to a buffer for testing purposes.
+// newTestLogger crée un logger qui écrit dans un buffer pour les tests.
 func newTestLogger(buf *bytes.Buffer) *Logger {
 	return &Logger{
-		file:    nil, // Not used in test
+		file:    nil, // Non utilisé dans les tests
 		encoder: json.NewEncoder(buf),
 		mu:      sync.Mutex{},
 	}
 }
 
-// newTestTracker creates a Tracker with test loggers for testing purposes.
+// newTestTracker crée un Tracker avec des loggers de test pour les tests.
 func newTestTracker(eventBuf, logBuf *bytes.Buffer) *Tracker {
 	cfg := &Config{
 		LogFile:         "test.log",
@@ -44,15 +41,15 @@ func newTestTracker(eventBuf, logBuf *bytes.Buffer) *Tracker {
 	return tracker
 }
 
-// TestProcessMessageDeserializationFailure verifies that a message with invalid JSON
-// is correctly logged as a deserialization failure.
+// TestProcessMessageDeserializationFailure vérifie qu'un message avec un JSON invalide
+// est correctement journalisé comme un échec de désérialisation.
 func TestProcessMessageDeserializationFailure(t *testing.T) {
-	// Setup: create a test tracker with buffers
+	// Configuration: créer un tracker de test avec des buffers
 	var eventBuf bytes.Buffer
 	var logBuf bytes.Buffer
 	tracker := newTestTracker(&eventBuf, &logBuf)
 
-	// Create a Kafka message with invalid JSON
+	// Créer un message Kafka avec un JSON invalide
 	topic := "orders"
 	kafkaMsg := &kafka.Message{
 		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: 1, Offset: 101},
@@ -60,26 +57,27 @@ func TestProcessMessageDeserializationFailure(t *testing.T) {
 		Timestamp:      time.Now(),
 	}
 
-	// Call the function under test
+	// Appeler la fonction testée
 	tracker.processMessage(kafkaMsg)
 
-	// Assert: Check the event log for correct deserialization status
+	// Vérification: Vérifier le journal des événements pour le statut correct
 	eventLogOutput := eventBuf.String()
 	if !strings.Contains(eventLogOutput, `"deserialized":false`) {
-		t.Errorf("Expected event log to contain '\"deserialized\":false', but it did not. Log: %s", eventLogOutput)
+		t.Errorf("Attendu que le journal d'événements contienne '\"deserialized\":false', mais ce n'est pas le cas. Log: %s", eventLogOutput)
 	}
 	if !strings.Contains(eventLogOutput, `"error":"unexpected end of JSON input"`) {
-		t.Errorf("Expected event log to contain the JSON parsing error, but it did not. Log: %s", eventLogOutput)
+		t.Errorf("Attendu que le journal d'événements contienne l'erreur de parsing JSON, mais ce n'est pas le cas. Log: %s", eventLogOutput)
 	}
 
-	// Assert: Check the system log for a specific error message
+	// Vérification: Vérifier le journal système pour un message d'erreur spécifique
+	// Note: Le message en français est "Erreur de désérialisation du message"
 	logOutput := logBuf.String()
-	if !strings.Contains(logOutput, `"message":"Message deserialization error"`) {
-		t.Errorf("Expected system log to contain deserialization error message, but it did not. Log: %s", logOutput)
+	if !strings.Contains(logOutput, `"message":"Erreur de désérialisation du message"`) {
+		t.Errorf("Attendu que le journal système contienne le message d'erreur de désérialisation, mais ce n'est pas le cas. Log: %s", logOutput)
 	}
 }
 
-// TestProcessMessageSuccess verifies that a valid message is correctly processed.
+// TestProcessMessageSuccess vérifie qu'un message valide est correctement traité.
 func TestProcessMessageSuccess(t *testing.T) {
 	var eventBuf bytes.Buffer
 	var logBuf bytes.Buffer
@@ -97,61 +95,61 @@ func TestProcessMessageSuccess(t *testing.T) {
 
 	eventLogOutput := eventBuf.String()
 	if !strings.Contains(eventLogOutput, `"deserialized":true`) {
-		t.Errorf("Expected event log to contain '\"deserialized\":true', but it did not. Log: %s", eventLogOutput)
+		t.Errorf("Attendu que le journal d'événements contienne '\"deserialized\":true', mais ce n'est pas le cas. Log: %s", eventLogOutput)
 	}
 
-	// Verify metrics were updated
+	// Vérifier que les métriques ont été mises à jour
 	if tracker.metrics.MessagesReceived != 1 {
-		t.Errorf("Expected MessagesReceived to be 1, got %d", tracker.metrics.MessagesReceived)
+		t.Errorf("Attendu que MessagesReceived soit 1, reçu %d", tracker.metrics.MessagesReceived)
 	}
 	if tracker.metrics.MessagesProcessed != 1 {
-		t.Errorf("Expected MessagesProcessed to be 1, got %d", tracker.metrics.MessagesProcessed)
+		t.Errorf("Attendu que MessagesProcessed soit 1, reçu %d", tracker.metrics.MessagesProcessed)
 	}
 }
 
-// TestRecordMetrics verifies that metrics are correctly updated.
+// TestRecordMetrics vérifie que les métriques sont correctement mises à jour.
 func TestRecordMetrics(t *testing.T) {
 	metrics := &SystemMetrics{StartTime: time.Now()}
 
-	// Test successful message
+	// Tester un message réussi
 	metrics.recordMetrics(true, false)
 	if metrics.MessagesReceived != 1 {
-		t.Errorf("Expected MessagesReceived to be 1, got %d", metrics.MessagesReceived)
+		t.Errorf("Attendu que MessagesReceived soit 1, reçu %d", metrics.MessagesReceived)
 	}
 	if metrics.MessagesProcessed != 1 {
-		t.Errorf("Expected MessagesProcessed to be 1, got %d", metrics.MessagesProcessed)
+		t.Errorf("Attendu que MessagesProcessed soit 1, reçu %d", metrics.MessagesProcessed)
 	}
 	if metrics.MessagesFailed != 0 {
-		t.Errorf("Expected MessagesFailed to be 0, got %d", metrics.MessagesFailed)
+		t.Errorf("Attendu que MessagesFailed soit 0, reçu %d", metrics.MessagesFailed)
 	}
 
-	// Test failed message
+	// Tester un message échoué
 	metrics.recordMetrics(false, true)
 	if metrics.MessagesReceived != 2 {
-		t.Errorf("Expected MessagesReceived to be 2, got %d", metrics.MessagesReceived)
+		t.Errorf("Attendu que MessagesReceived soit 2, reçu %d", metrics.MessagesReceived)
 	}
 	if metrics.MessagesProcessed != 1 {
-		t.Errorf("Expected MessagesProcessed to be 1, got %d", metrics.MessagesProcessed)
+		t.Errorf("Attendu que MessagesProcessed soit 1, reçu %d", metrics.MessagesProcessed)
 	}
 	if metrics.MessagesFailed != 1 {
-		t.Errorf("Expected MessagesFailed to be 1, got %d", metrics.MessagesFailed)
+		t.Errorf("Attendu que MessagesFailed soit 1, reçu %d", metrics.MessagesFailed)
 	}
 }
 
-// TestNewConfig verifies that the default configuration is correctly created.
+// TestNewConfig vérifie que la configuration par défaut est correctement créée.
 func TestNewConfig(t *testing.T) {
 	cfg := NewConfig()
 
 	if cfg.KafkaBroker == "" {
-		t.Error("Expected KafkaBroker to be set")
+		t.Error("Attendu que KafkaBroker soit défini")
 	}
 	if cfg.ConsumerGroup == "" {
-		t.Error("Expected ConsumerGroup to be set")
+		t.Error("Attendu que ConsumerGroup soit défini")
 	}
 	if cfg.Topic == "" {
-		t.Error("Expected Topic to be set")
+		t.Error("Attendu que Topic soit défini")
 	}
 	if cfg.MaxErrors <= 0 {
-		t.Error("Expected MaxErrors to be positive")
+		t.Error("Attendu que MaxErrors soit positif")
 	}
 }

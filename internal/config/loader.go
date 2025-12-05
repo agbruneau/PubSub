@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// AppConfig is the main configuration structure for the application.
+// AppConfig est la structure principale de configuration pour l'application.
 type AppConfig struct {
 	App      AppSettings    `yaml:"app"`
 	Kafka    KafkaConfig    `yaml:"kafka"`
@@ -20,26 +20,26 @@ type AppConfig struct {
 	DLQ      DLQConfig      `yaml:"dlq"`
 }
 
-// AppSettings contains general application settings.
+// AppSettings contient les paramètres généraux de l'application.
 type AppSettings struct {
 	Env      string `yaml:"env"`
 	LogLevel string `yaml:"log_level"`
 }
 
-// KafkaConfig contains Kafka connection settings.
+// KafkaConfig contient les paramètres de connexion Kafka.
 type KafkaConfig struct {
 	Broker        string `yaml:"broker"`
 	Topic         string `yaml:"topic"`
 	ConsumerGroup string `yaml:"consumer_group"`
 }
 
-// ProducerConfig contains producer-specific settings.
+// ProducerConfig contient les paramètres spécifiques au producteur.
 type ProducerConfig struct {
 	IntervalMs     int `yaml:"interval_ms"`
 	FlushTimeoutMs int `yaml:"flush_timeout_ms"`
 }
 
-// TrackerConfig contains tracker-specific settings.
+// TrackerConfig contient les paramètres spécifiques au tracker.
 type TrackerConfig struct {
 	LogFile                string `yaml:"log_file"`
 	EventsFile             string `yaml:"events_file"`
@@ -48,14 +48,14 @@ type TrackerConfig struct {
 	MaxConsecutiveErrors   int    `yaml:"max_consecutive_errors"`
 }
 
-// MonitorConfig contains monitor-specific settings.
+// MonitorConfig contient les paramètres spécifiques au moniteur.
 type MonitorConfig struct {
 	MaxRecentLogs   int `yaml:"max_recent_logs"`
 	MaxRecentEvents int `yaml:"max_recent_events"`
 	UIUpdateMs      int `yaml:"ui_update_ms"`
 }
 
-// RetryConfig contains retry pattern settings.
+// RetryConfig contient les paramètres du modèle de relance (retry).
 type RetryConfig struct {
 	MaxAttempts    int     `yaml:"max_attempts"`
 	InitialDelayMs int     `yaml:"initial_delay_ms"`
@@ -63,13 +63,13 @@ type RetryConfig struct {
 	Multiplier     float64 `yaml:"multiplier"`
 }
 
-// DLQConfig contains Dead Letter Queue settings.
+// DLQConfig contient les paramètres de la file d'attente des lettres mortes (DLQ).
 type DLQConfig struct {
 	Enabled bool   `yaml:"enabled"`
 	Topic   string `yaml:"topic"`
 }
 
-// DefaultConfig returns a configuration with default values.
+// DefaultConfig retourne une configuration avec des valeurs par défaut.
 func DefaultConfig() *AppConfig {
 	return &AppConfig{
 		App: AppSettings{
@@ -110,28 +110,28 @@ func DefaultConfig() *AppConfig {
 	}
 }
 
-// Load loads configuration from a YAML file, falling back to defaults.
-// Environment variables override YAML values.
+// Load charge la configuration depuis un fichier YAML, en utilisant les valeurs par défaut si nécessaire.
+// Les variables d'environnement surchargent les valeurs du fichier YAML.
 func Load(configPath string) (*AppConfig, error) {
 	cfg := DefaultConfig()
 
-	// Try to load from YAML file
+	// Essayer de charger depuis le fichier YAML
 	if configPath != "" {
 		if err := loadFromYAML(configPath, cfg); err != nil {
-			// File not found is okay, we use defaults
+			// Le fichier non trouvé est acceptable, on utilise les défauts
 			if !os.IsNotExist(err) {
-				return nil, fmt.Errorf("error loading config file: %w", err)
+				return nil, fmt.Errorf("erreur lors du chargement du fichier de config: %w", err)
 			}
 		}
 	}
 
-	// Override with environment variables
+	// Surcharger avec les variables d'environnement
 	loadFromEnv(cfg)
 
 	return cfg, nil
 }
 
-// loadFromYAML loads configuration from a YAML file.
+// loadFromYAML charge la configuration depuis un fichier YAML.
 func loadFromYAML(path string, cfg *AppConfig) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -139,15 +139,15 @@ func loadFromYAML(path string, cfg *AppConfig) error {
 	}
 
 	if err := yaml.Unmarshal(data, cfg); err != nil {
-		return fmt.Errorf("error parsing YAML: %w", err)
+		return fmt.Errorf("erreur lors de l'analyse YAML: %w", err)
 	}
 
 	return nil
 }
 
-// loadFromEnv overrides configuration with environment variables.
+// loadFromEnv surcharge la configuration avec les variables d'environnement.
 func loadFromEnv(cfg *AppConfig) {
-	// App settings
+	// Paramètres App
 	if v := os.Getenv("APP_ENV"); v != "" {
 		cfg.App.Env = v
 	}
@@ -155,7 +155,7 @@ func loadFromEnv(cfg *AppConfig) {
 		cfg.App.LogLevel = v
 	}
 
-	// Kafka settings
+	// Paramètres Kafka
 	if v := os.Getenv("KAFKA_BROKER"); v != "" {
 		cfg.Kafka.Broker = v
 	}
@@ -166,14 +166,14 @@ func loadFromEnv(cfg *AppConfig) {
 		cfg.Kafka.ConsumerGroup = v
 	}
 
-	// Producer settings
+	// Paramètres Producer
 	if v := os.Getenv("PRODUCER_INTERVAL_MS"); v != "" {
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.Producer.IntervalMs = i
 		}
 	}
 
-	// Tracker settings
+	// Paramètres Tracker
 	if v := os.Getenv("TRACKER_LOG_FILE"); v != "" {
 		cfg.Tracker.LogFile = v
 	}
@@ -181,14 +181,14 @@ func loadFromEnv(cfg *AppConfig) {
 		cfg.Tracker.EventsFile = v
 	}
 
-	// Retry settings
+	// Paramètres Retry
 	if v := os.Getenv("RETRY_MAX_ATTEMPTS"); v != "" {
 		if i, err := strconv.Atoi(v); err == nil {
 			cfg.Retry.MaxAttempts = i
 		}
 	}
 
-	// DLQ settings
+	// Paramètres DLQ
 	if v := os.Getenv("DLQ_ENABLED"); v != "" {
 		cfg.DLQ.Enabled = v == "true" || v == "1"
 	}
@@ -197,32 +197,32 @@ func loadFromEnv(cfg *AppConfig) {
 	}
 }
 
-// GetProducerInterval returns the producer interval as a duration.
+// GetProducerInterval retourne l'intervalle du producteur sous forme de durée.
 func (c *AppConfig) GetProducerInterval() time.Duration {
 	return time.Duration(c.Producer.IntervalMs) * time.Millisecond
 }
 
-// GetFlushTimeout returns the flush timeout as a duration.
+// GetFlushTimeout retourne le délai d'expiration du flush sous forme de durée.
 func (c *AppConfig) GetFlushTimeout() time.Duration {
 	return time.Duration(c.Producer.FlushTimeoutMs) * time.Millisecond
 }
 
-// GetMetricsInterval returns the metrics interval as a duration.
+// GetMetricsInterval retourne l'intervalle des métriques sous forme de durée.
 func (c *AppConfig) GetMetricsInterval() time.Duration {
 	return time.Duration(c.Tracker.MetricsIntervalSeconds) * time.Second
 }
 
-// GetReadTimeout returns the read timeout as a duration.
+// GetReadTimeout retourne le délai de lecture sous forme de durée.
 func (c *AppConfig) GetReadTimeout() time.Duration {
 	return time.Duration(c.Tracker.ReadTimeoutMs) * time.Millisecond
 }
 
-// GetInitialRetryDelay returns the initial retry delay as a duration.
+// GetInitialRetryDelay retourne le délai initial de relance sous forme de durée.
 func (c *AppConfig) GetInitialRetryDelay() time.Duration {
 	return time.Duration(c.Retry.InitialDelayMs) * time.Millisecond
 }
 
-// GetMaxRetryDelay returns the max retry delay as a duration.
+// GetMaxRetryDelay retourne le délai maximum de relance sous forme de durée.
 func (c *AppConfig) GetMaxRetryDelay() time.Duration {
 	return time.Duration(c.Retry.MaxDelayMs) * time.Millisecond
 }

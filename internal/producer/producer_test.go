@@ -1,13 +1,10 @@
-//go:build kafka
-// +build kafka
-
 package producer
 
 import (
 	"testing"
 )
 
-// TestGenerateOrder verifies that GenerateOrder creates a valid order.
+// TestGenerateOrder vérifie que GenerateOrder crée une commande valide.
 func TestGenerateOrder(t *testing.T) {
 	cfg := NewConfig()
 	producer := New(cfg)
@@ -21,114 +18,114 @@ func TestGenerateOrder(t *testing.T) {
 
 	order := producer.GenerateOrder(template, 1)
 
-	// Verify basic fields
+	// Vérifier les champs de base
 	if order.OrderID == "" {
-		t.Error("Expected OrderID to be set")
+		t.Error("Attendu que OrderID soit défini")
 	}
 	if order.Sequence != 1 {
-		t.Errorf("Expected Sequence to be 1, got %d", order.Sequence)
+		t.Errorf("Attendu que la séquence soit 1, reçu %d", order.Sequence)
 	}
 	if order.Status != "pending" {
-		t.Errorf("Expected Status to be 'pending', got %s", order.Status)
+		t.Errorf("Attendu que le statut soit 'pending', reçu %s", order.Status)
 	}
 
-	// Verify items
+	// Vérifier les articles
 	if len(order.Items) != 1 {
-		t.Errorf("Expected 1 item, got %d", len(order.Items))
+		t.Errorf("Attendu 1 article, reçu %d", len(order.Items))
 	}
 	if order.Items[0].ItemName != "test-item" {
-		t.Errorf("Expected ItemName to be 'test-item', got %s", order.Items[0].ItemName)
+		t.Errorf("Attendu que ItemName soit 'test-item', reçu %s", order.Items[0].ItemName)
 	}
 	if order.Items[0].Quantity != 3 {
-		t.Errorf("Expected Quantity to be 3, got %d", order.Items[0].Quantity)
+		t.Errorf("Attendu que la quantité soit 3, reçu %d", order.Items[0].Quantity)
 	}
 
-	// Verify financial calculations
+	// Vérifier les calculs financiers
 	expectedSubTotal := 30.00 // 3 * 10.00
 	if order.SubTotal != expectedSubTotal {
-		t.Errorf("Expected SubTotal to be %.2f, got %.2f", expectedSubTotal, order.SubTotal)
+		t.Errorf("Attendu que SubTotal soit %.2f, reçu %.2f", expectedSubTotal, order.SubTotal)
 	}
 
 	expectedTax := expectedSubTotal * cfg.TaxRate
 	if order.Tax != expectedTax {
-		t.Errorf("Expected Tax to be %.2f, got %.2f", expectedTax, order.Tax)
+		t.Errorf("Attendu que Tax soit %.2f, reçu %.2f", expectedTax, order.Tax)
 	}
 
 	expectedTotal := expectedSubTotal + expectedTax + cfg.ShippingFee
 	if order.Total != expectedTotal {
-		t.Errorf("Expected Total to be %.2f, got %.2f", expectedTotal, order.Total)
+		t.Errorf("Attendu que Total soit %.2f, reçu %.2f", expectedTotal, order.Total)
 	}
 
-	// Verify customer info
+	// Vérifier les infos client
 	if order.CustomerInfo.CustomerID != "test-user" {
-		t.Errorf("Expected CustomerID to be 'test-user', got %s", order.CustomerInfo.CustomerID)
+		t.Errorf("Attendu que CustomerID soit 'test-user', reçu %s", order.CustomerInfo.CustomerID)
 	}
 
-	// Verify metadata
+	// Vérifier les métadonnées
 	if order.Metadata.EventType != "order.created" {
-		t.Errorf("Expected EventType to be 'order.created', got %s", order.Metadata.EventType)
+		t.Errorf("Attendu que EventType soit 'order.created', reçu %s", order.Metadata.EventType)
 	}
 	if order.Metadata.Source != "producer-service" {
-		t.Errorf("Expected Source to be 'producer-service', got %s", order.Metadata.Source)
+		t.Errorf("Attendu que Source soit 'producer-service', reçu %s", order.Metadata.Source)
 	}
 }
 
-// TestNewConfig verifies that the default configuration is correctly created.
+// TestNewConfig vérifie que la configuration par défaut est correctement créée.
 func TestNewConfig(t *testing.T) {
 	cfg := NewConfig()
 
 	if cfg.KafkaBroker == "" {
-		t.Error("Expected KafkaBroker to be set")
+		t.Error("Attendu que KafkaBroker soit défini")
 	}
 	if cfg.Topic == "" {
-		t.Error("Expected Topic to be set")
+		t.Error("Attendu que Topic soit défini")
 	}
 	if cfg.TaxRate <= 0 {
-		t.Error("Expected TaxRate to be positive")
+		t.Error("Attendu que TaxRate soit positif")
 	}
 	if cfg.ShippingFee < 0 {
-		t.Error("Expected ShippingFee to be non-negative")
+		t.Error("Attendu que ShippingFee soit non-négatif")
 	}
 	if cfg.Currency == "" {
-		t.Error("Expected Currency to be set")
+		t.Error("Attendu que Currency soit défini")
 	}
 }
 
-// TestDefaultOrderTemplates verifies that the default templates are defined.
+// TestDefaultOrderTemplates vérifie que les modèles par défaut sont définis.
 func TestDefaultOrderTemplates(t *testing.T) {
 	if len(DefaultOrderTemplates) == 0 {
-		t.Error("Expected DefaultOrderTemplates to have at least one template")
+		t.Error("Attendu que DefaultOrderTemplates ait au moins un modèle")
 	}
 
-	// Verify all templates have required fields
+	// Vérifier que tous les modèles ont les champs requis
 	for i, template := range DefaultOrderTemplates {
 		if template.User == "" {
-			t.Errorf("Template %d: Expected User to be set", i)
+			t.Errorf("Modèle %d: Attendu que User soit défini", i)
 		}
 		if template.Item == "" {
-			t.Errorf("Template %d: Expected Item to be set", i)
+			t.Errorf("Modèle %d: Attendu que Item soit défini", i)
 		}
 		if template.Quantity <= 0 {
-			t.Errorf("Template %d: Expected Quantity to be positive, got %d", i, template.Quantity)
+			t.Errorf("Modèle %d: Attendu que Quantity soit positif, reçu %d", i, template.Quantity)
 		}
 		if template.Price <= 0 {
-			t.Errorf("Template %d: Expected Price to be positive, got %f", i, template.Price)
+			t.Errorf("Modèle %d: Attendu que Price soit positif, reçu %f", i, template.Price)
 		}
 	}
 }
 
-// TestNew verifies that a new OrderProducer is correctly created.
+// TestNew vérifie qu'un nouveau OrderProducer est correctement créé.
 func TestNew(t *testing.T) {
 	cfg := NewConfig()
 	producer := New(cfg)
 
 	if producer.config != cfg {
-		t.Error("Expected config to be set")
+		t.Error("Attendu que config soit défini")
 	}
 	if producer.sequence != 1 {
-		t.Errorf("Expected sequence to start at 1, got %d", producer.sequence)
+		t.Errorf("Attendu que la séquence commence à 1, reçu %d", producer.sequence)
 	}
 	if len(producer.templates) == 0 {
-		t.Error("Expected templates to be set")
+		t.Error("Attendu que templates soit défini")
 	}
 }

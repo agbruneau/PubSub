@@ -1,11 +1,8 @@
-//go:build kafka
-// +build kafka
-
 /*
-Tracker entry point for the Kafka Demo PubSub system.
+Point d'entrée du tracker pour le système PubSub de démonstration Kafka.
 
-This is the main entry point for the tracker (consumer) binary.
-Build: go build -o tracker.exe ./cmd/tracker
+Ceci est le point d'entrée principal pour le binaire du tracker (consommateur).
+Construction: go build -o tracker.exe ./cmd/tracker
 */
 package main
 
@@ -20,36 +17,36 @@ import (
 )
 
 func main() {
-	// Load configuration
+	// Charger la configuration
 	config := tracker.NewConfig()
 
-	// Create and initialize the tracker
+	// Créer et initialiser le tracker
 	trk := tracker.New(config)
 	if err := trk.Initialize(); err != nil {
-		log.Fatalf("Fatal error during initialization: %v", err)
+		log.Fatalf("Erreur fatale lors de l'initialisation: %v", err)
 	}
 	defer trk.Close()
 
-	fmt.Println("🟢 Consumer is running...")
-	fmt.Printf("📝 System observability logs in %s\n", config.LogFile)
-	fmt.Printf("📋 Complete message logging in %s\n", config.EventsFile)
+	fmt.Println("🟢 Le consommateur est en cours d'exécution...")
+	fmt.Printf("📝 Logs d'observabilité système dans %s\n", config.LogFile)
+	fmt.Printf("📋 Journalisation complète des messages dans %s\n", config.EventsFile)
 
-	// Handle stop signals
+	// Gérer les signaux d'arrêt
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 
-	// Start the tracker in a goroutine
+	// Démarrer le tracker dans une goroutine
 	done := make(chan struct{})
 	go func() {
 		trk.Run()
 		close(done)
 	}()
 
-	// Wait for stop signal
+	// Attendre un signal d'arrêt
 	<-sigchan
-	fmt.Println("\n⚠️ Stop signal received...")
+	fmt.Println("\n⚠️ Signal d'arrêt reçu...")
 	trk.Stop()
 	<-done
 
-	fmt.Println("🔴 Consumer stopped.")
+	fmt.Println("🔴 Consommateur arrêté.")
 }

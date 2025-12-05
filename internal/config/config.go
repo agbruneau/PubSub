@@ -1,32 +1,32 @@
 /*
-Package config provides centralized configuration for the PubSub system.
+Package config fournit la configuration centralisée pour le système PubSub.
 
-This package contains all constants and configuration structures
-shared between the producer, tracker, and monitor components.
+Ce paquet contient toutes les constantes et structures de configuration
+partagées entre les composants producer, tracker et monitor.
 */
 package config
 
 import "time"
 
-// Kafka default configuration
+// Configuration par défaut de Kafka
 const (
 	DefaultKafkaBroker   = "localhost:9092"
 	DefaultConsumerGroup = "order-tracker-group"
 	DefaultTopic         = "orders"
 )
 
-// Log files
+// Fichiers de logs
 const (
 	TrackerLogFile    = "tracker.log"
 	TrackerEventsFile = "tracker.events"
 )
 
-// Common timeouts and intervals
+// Délais et intervalles communs
 const (
 	FlushTimeoutMs = 15000
 )
 
-// Producer constants
+// Constantes pour le producteur
 const (
 	ProducerMessageInterval     = 2 * time.Second
 	ProducerFlushTimeout        = 5 * time.Second
@@ -38,7 +38,7 @@ const (
 	ProducerDefaultWarehouse    = "PARIS-01"
 )
 
-// Tracker constants
+// Constantes pour le tracker (consommateur)
 const (
 	TrackerMetricsInterval      = 30 * time.Second
 	TrackerConsumerReadTimeout  = 1 * time.Second
@@ -46,7 +46,7 @@ const (
 	TrackerServiceName          = "order-tracker"
 )
 
-// Monitor constants
+// Constantes pour le moniteur de logs
 const (
 	MonitorMaxRecentLogs      = 20
 	MonitorMaxRecentEvents    = 20
@@ -54,34 +54,34 @@ const (
 	MonitorLogChannelBuffer   = 100
 	MonitorEventChannelBuffer = 100
 
-	// Success rate thresholds (%)
+	// Seuils de taux de succès (%)
 	MonitorSuccessRateExcellent = 95.0
 	MonitorSuccessRateGood      = 80.0
 
-	// Throughput thresholds (messages per second)
+	// Seuils de débit (messages par seconde)
 	MonitorThroughputNormal = 0.3
 	MonitorThroughputLow    = 0.1
 
-	// Error time thresholds
+	// Seuils de temps d'erreur
 	MonitorErrorTimeoutCritical = 1 * time.Minute
 	MonitorErrorTimeoutWarning  = 5 * time.Minute
 
-	// Quality score thresholds for throughput
+	// Seuils de score de qualité pour le débit
 	MonitorQualityThroughputHigh   = 0.5
 	MonitorQualityThroughputMedium = 0.3
 	MonitorQualityThroughputLow    = 0.1
 
-	// Quality score thresholds
+	// Seuils de score de qualité global
 	MonitorQualityScoreExcellent = 90.0
 	MonitorQualityScoreGood      = 70.0
 	MonitorQualityScoreMedium    = 50.0
 
-	// Time intervals
+	// Intervalles de temps
 	MonitorFileCheckInterval = 1 * time.Second
 	MonitorFilePollInterval  = 200 * time.Millisecond
 	MonitorUIUpdateInterval  = 500 * time.Millisecond
 
-	// Display limits
+	// Limites d'affichage
 	MonitorMaxLogRowLength   = 75
 	MonitorMaxEventRowLength = 75
 	MonitorTruncateSuffix    = "..."
