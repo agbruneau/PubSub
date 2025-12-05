@@ -97,7 +97,8 @@ type Tracker struct {
 	logLogger   *Logger
 	eventLogger *Logger
 	metrics     *SystemMetrics
-	consumer    *kafka.Consumer
+	consumer    KafkaConsumer   // Interface for testability
+	rawConsumer *kafka.Consumer // Keep reference for close
 	stopChan    chan struct{}
 	running     bool
 	mu          sync.Mutex
@@ -134,7 +135,7 @@ func (t *Tracker) Initialize() error {
 	})
 
 	// Initialize Kafka consumer
-	t.consumer, err = kafka.NewConsumer(&kafka.ConfigMap{
+	t.rawConsumer, err = kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers": t.config.KafkaBroker,
 		"group.id":          t.config.ConsumerGroup,
 		"auto.offset.reset": "earliest",
@@ -144,6 +145,7 @@ func (t *Tracker) Initialize() error {
 		t.Close()
 		return fmt.Errorf("unable to create Kafka consumer: %w", err)
 	}
+	t.consumer = newKafkaConsumerWrapper(t.rawConsumer)
 
 	// Subscribe to topic
 	err = t.consumer.SubscribeTopics([]string{t.config.Topic}, nil)
@@ -314,8 +316,8 @@ func (t *Tracker) Stop() {
 
 // Close releases all resources.
 func (t *Tracker) Close() {
-	if t.consumer != nil {
-		t.consumer.Close()
+	if t.rawConsumer != nil {
+		t.rawConsumer.Close()
 	}
 	if t.logLogger != nil {
 		t.logLogger.Close()

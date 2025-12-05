@@ -87,7 +87,8 @@ var DefaultOrderTemplates = []OrderTemplate{
 // It encapsulates the Kafka producer, configuration, and order templates.
 type OrderProducer struct {
 	config       *Config
-	producer     *kafka.Producer
+	producer     KafkaProducer   // Interface for testability
+	rawProducer  *kafka.Producer // Keep reference for delivery reports
 	deliveryChan chan kafka.Event
 	templates    []OrderTemplate
 	sequence     int
@@ -106,12 +107,13 @@ func New(cfg *Config) *OrderProducer {
 // Initialize initializes the Kafka producer.
 func (p *OrderProducer) Initialize() error {
 	var err error
-	p.producer, err = kafka.NewProducer(&kafka.ConfigMap{
+	p.rawProducer, err = kafka.NewProducer(&kafka.ConfigMap{
 		"bootstrap.servers": p.config.KafkaBroker,
 	})
 	if err != nil {
 		return fmt.Errorf("unable to create Kafka producer: %w", err)
 	}
+	p.producer = newKafkaProducerWrapper(p.rawProducer)
 
 	p.deliveryChan = make(chan kafka.Event, config.ProducerDeliveryChannelSize)
 	go p.handleDeliveryReports()
@@ -238,5 +240,5 @@ func (p *OrderProducer) Close() {
 	} else {
 		fmt.Println("✅ All messages sent successfully.")
 	}
-	p.producer.Close()
+	p.rawProducer.Close()
 }

@@ -17,21 +17,21 @@ import (
 
 // Validation errors
 var (
-	ErrEmptyOrderID       = errors.New("order_id est requis")
-	ErrInvalidSequence    = errors.New("sequence doit être positif")
-	ErrEmptyStatus        = errors.New("status est requis")
-	ErrNoItems            = errors.New("la commande doit contenir au moins un article")
-	ErrInvalidCustomerID  = errors.New("customer_id est requis")
-	ErrInvalidCustomerName = errors.New("le nom du client est requis")
-	ErrInvalidEmail       = errors.New("email invalide")
-	ErrInvalidItemID      = errors.New("item_id est requis")
-	ErrInvalidItemName    = errors.New("item_name est requis")
-	ErrInvalidQuantity    = errors.New("quantity doit être positif")
-	ErrInvalidUnitPrice   = errors.New("unit_price doit être positif")
-	ErrInvalidTotalPrice  = errors.New("total_price ne correspond pas à quantity * unit_price")
-	ErrInvalidSubtotal    = errors.New("subtotal ne correspond pas à la somme des articles")
-	ErrInvalidTax         = errors.New("tax doit être positif ou nul")
-	ErrInvalidTotal       = errors.New("total est incohérent avec subtotal + tax + shipping")
+	ErrEmptyOrderID        = errors.New("order_id is required")
+	ErrInvalidSequence     = errors.New("sequence must be positive")
+	ErrEmptyStatus         = errors.New("status is required")
+	ErrNoItems             = errors.New("order must contain at least one item")
+	ErrInvalidCustomerID   = errors.New("customer_id is required")
+	ErrInvalidCustomerName = errors.New("customer name is required")
+	ErrInvalidEmail        = errors.New("invalid email format")
+	ErrInvalidItemID       = errors.New("item_id is required")
+	ErrInvalidItemName     = errors.New("item_name is required")
+	ErrInvalidQuantity     = errors.New("quantity must be positive")
+	ErrInvalidUnitPrice    = errors.New("unit_price must be positive")
+	ErrInvalidTotalPrice   = errors.New("total_price does not match quantity * unit_price")
+	ErrInvalidSubtotal     = errors.New("subtotal does not match sum of items")
+	ErrInvalidTax          = errors.New("tax must be zero or positive")
+	ErrInvalidTotal        = errors.New("total is inconsistent with subtotal + tax + shipping")
 )
 
 // emailRegex validates email format
@@ -99,7 +99,7 @@ func (item *OrderItem) Validate() error {
 	}
 	expectedTotal := float64(item.Quantity) * item.UnitPrice
 	if math.Abs(item.TotalPrice-expectedTotal) > 0.01 {
-		return fmt.Errorf("%w: attendu %.2f, obtenu %.2f", ErrInvalidTotalPrice, expectedTotal, item.TotalPrice)
+		return fmt.Errorf("%w: expected %.2f, got %.2f", ErrInvalidTotalPrice, expectedTotal, item.TotalPrice)
 	}
 	return nil
 }
@@ -174,14 +174,14 @@ func (o *Order) Validate() error {
 	var calculatedSubtotal float64
 	for i, item := range o.Items {
 		if err := item.Validate(); err != nil {
-			return fmt.Errorf("article %d: %w", i+1, err)
+			return fmt.Errorf("item %d: %w", i+1, err)
 		}
 		calculatedSubtotal += item.TotalPrice
 	}
 
 	// Financial validations
 	if math.Abs(o.SubTotal-calculatedSubtotal) > 0.01 {
-		return fmt.Errorf("%w: attendu %.2f, obtenu %.2f", ErrInvalidSubtotal, calculatedSubtotal, o.SubTotal)
+		return fmt.Errorf("%w: expected %.2f, got %.2f", ErrInvalidSubtotal, calculatedSubtotal, o.SubTotal)
 	}
 
 	if o.Tax < 0 {
@@ -190,7 +190,7 @@ func (o *Order) Validate() error {
 
 	expectedTotal := o.SubTotal + o.Tax + o.ShippingFee
 	if math.Abs(o.Total-expectedTotal) > 0.01 {
-		return fmt.Errorf("%w: attendu %.2f, obtenu %.2f", ErrInvalidTotal, expectedTotal, o.Total)
+		return fmt.Errorf("%w: expected %.2f, got %.2f", ErrInvalidTotal, expectedTotal, o.Total)
 	}
 
 	return nil
