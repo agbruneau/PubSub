@@ -15,6 +15,9 @@ import (
 	"github.com/agbruneau/PubSub/internal/producer"
 )
 
+// main est la fonction principale qui initialise et lance le service producteur.
+// Elle charge la configuration, initialise la connexion Kafka, et démarre la boucle de production.
+// Elle écoute également les signaux système (SIGINT, SIGTERM) pour un arrêt gracieux.
 func main() {
 	// Charger la configuration
 	config := producer.NewConfig()

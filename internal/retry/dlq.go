@@ -12,36 +12,45 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-// FailedMessage represents a message that failed processing.
+// FailedMessage représente un message qui a échoué lors du traitement.
 type FailedMessage struct {
-	OriginalTopic     string          `json:"original_topic"`
-	OriginalPartition int32           `json:"original_partition"`
-	OriginalOffset    int64           `json:"original_offset"`
-	OriginalTimestamp time.Time       `json:"original_timestamp"`
-	FailedAt          time.Time       `json:"failed_at"`
-	Attempts          int             `json:"attempts"`
-	LastError         string          `json:"last_error"`
-	Payload           json.RawMessage `json:"payload"`
+	OriginalTopic     string          `json:"original_topic"`     // Le sujet Kafka d'origine.
+	OriginalPartition int32           `json:"original_partition"` // La partition Kafka d'origine.
+	OriginalOffset    int64           `json:"original_offset"`    // Le décalage (offset) d'origine.
+	OriginalTimestamp time.Time       `json:"original_timestamp"` // L'horodatage d'origine du message.
+	FailedAt          time.Time       `json:"failed_at"`          // L'heure de l'échec.
+	Attempts          int             `json:"attempts"`           // Le nombre de tentatives effectuées.
+	LastError         string          `json:"last_error"`         // Le dernier message d'erreur rencontré.
+	Payload           json.RawMessage `json:"payload"`            // Le contenu brut du message.
 }
 
-// DeadLetterQueue manages sending failed messages to a DLQ topic.
+// DeadLetterQueue gère l'envoi des messages échoués vers un topic DLQ (Dead Letter Queue).
 type DeadLetterQueue struct {
-	producer *kafka.Producer
-	topic    string
-	enabled  bool
-	mu       sync.Mutex
-	stats    DLQStats
+	producer *kafka.Producer // Le producteur Kafka interne.
+	topic    string          // Le nom du topic DLQ.
+	enabled  bool            // Indique si la DLQ est activée.
+	mu       sync.Mutex      // Mutex pour protéger les statistiques.
+	stats    DLQStats        // Statistiques d'envoi.
 }
 
-// DLQStats contains statistics about DLQ operations.
+// DLQStats contient des statistiques sur les opérations de la DLQ.
 type DLQStats struct {
-	MessagesSent  int64
-	SendErrors    int64
-	LastSentTime  time.Time
-	LastErrorTime time.Time
+	MessagesSent  int64     // Nombre total de messages envoyés à la DLQ.
+	SendErrors    int64     // Nombre d'erreurs lors de l'envoi à la DLQ.
+	LastSentTime  time.Time // Heure du dernier envoi réussi.
+	LastErrorTime time.Time // Heure de la dernière erreur.
 }
 
-// NewDeadLetterQueue creates a new DLQ handler.
+// NewDeadLetterQueue crée un nouveau gestionnaire de DLQ.
+//
+// Paramètres:
+//   - broker: L'adresse du broker Kafka.
+//   - topic: Le nom du topic DLQ.
+//   - enabled: Booléen pour activer ou désactiver la DLQ.
+//
+// Retourne:
+//   - *DeadLetterQueue: Une nouvelle instance initialisée.
+//   - error: Une erreur si la création du producteur échoue.
 func NewDeadLetterQueue(broker, topic string, enabled bool) (*DeadLetterQueue, error) {
 	if !enabled {
 		return &DeadLetterQueue{enabled: false}, nil
@@ -52,7 +61,7 @@ func NewDeadLetterQueue(broker, topic string, enabled bool) (*DeadLetterQueue, e
 		"acks":              "all",
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create DLQ producer: %w", err)
+		return nil, fmt.Errorf("échec de la création du producteur DLQ: %w", err)
 	}
 
 	dlq := &DeadLetterQueue{
@@ -61,13 +70,14 @@ func NewDeadLetterQueue(broker, topic string, enabled bool) (*DeadLetterQueue, e
 		enabled:  true,
 	}
 
-	// Start delivery report handler
+	// Démarrer le gestionnaire de rapports de livraison
 	go dlq.handleDeliveryReports()
 
 	return dlq, nil
 }
 
-// handleDeliveryReports processes delivery reports asynchronously.
+// handleDeliveryReports traite les rapports de livraison de manière asynchrone.
+// Cette méthode tourne en tâche de fond pour mettre à jour les statistiques.
 func (d *DeadLetterQueue) handleDeliveryReports() {
 	for e := range d.producer.Events() {
 		switch ev := e.(type) {
@@ -85,13 +95,21 @@ func (d *DeadLetterQueue) handleDeliveryReports() {
 	}
 }
 
-// Send sends a failed message to the DLQ.
+// Send envoie un message échoué vers la DLQ.
+//
+// Paramètres:
+//   - originalMsg: Le message Kafka original qui a échoué.
+//   - attempts: Le nombre de tentatives effectuées avant l'abandon.
+//   - lastErr: La dernière erreur rencontrée.
+//
+// Retourne:
+//   - error: Une erreur si la sérialisation ou l'envoi échoue.
 func (d *DeadLetterQueue) Send(originalMsg *kafka.Message, attempts int, lastErr error) error {
 	if !d.enabled {
 		return nil
 	}
 
-	// Create DLQ message
+	// Création du message DLQ
 	failedMsg := FailedMessage{
 		OriginalTopic:     *originalMsg.TopicPartition.Topic,
 		OriginalPartition: originalMsg.TopicPartition.Partition,
@@ -105,10 +123,10 @@ func (d *DeadLetterQueue) Send(originalMsg *kafka.Message, attempts int, lastErr
 
 	payload, err := json.Marshal(failedMsg)
 	if err != nil {
-		return fmt.Errorf("failed to marshal DLQ message: %w", err)
+		return fmt.Errorf("échec de la sérialisation du message DLQ: %w", err)
 	}
 
-	// Send to DLQ topic
+	// Envoi vers le topic DLQ
 	d.producer.Produce(&kafka.Message{
 		TopicPartition: kafka.TopicPartition{Topic: &d.topic, Partition: kafka.PartitionAny},
 		Value:          payload,
@@ -122,14 +140,18 @@ func (d *DeadLetterQueue) Send(originalMsg *kafka.Message, attempts int, lastErr
 	return nil
 }
 
-// GetStats returns the current DLQ statistics.
+// GetStats retourne les statistiques actuelles de la DLQ.
+//
+// Retourne:
+//   - DLQStats: Les statistiques d'utilisation de la DLQ.
 func (d *DeadLetterQueue) GetStats() DLQStats {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	return d.stats
 }
 
-// Close closes the DLQ producer.
+// Close ferme proprement le producteur DLQ.
+// Elle attend (flush) les messages en attente avant de fermer.
 func (d *DeadLetterQueue) Close() {
 	if d.producer != nil {
 		d.producer.Flush(5000)
@@ -137,7 +159,10 @@ func (d *DeadLetterQueue) Close() {
 	}
 }
 
-// IsEnabled returns whether the DLQ is enabled.
+// IsEnabled retourne si la DLQ est activée.
+//
+// Retourne:
+//   - bool: Vrai si la DLQ est activée.
 func (d *DeadLetterQueue) IsEnabled() bool {
 	return d.enabled
 }

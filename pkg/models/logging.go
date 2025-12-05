@@ -13,7 +13,7 @@ type LogLevel string
 
 const (
 	// LogLevelINFO représente un niveau de journalisation informatif.
-	LogLevelINFO  LogLevel = "INFO"
+	LogLevelINFO LogLevel = "INFO"
 	// LogLevelERROR représente un niveau de journalisation d'erreur.
 	LogLevelERROR LogLevel = "ERROR"
 )

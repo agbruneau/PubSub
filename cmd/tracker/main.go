@@ -16,6 +16,9 @@ import (
 	"github.com/agbruneau/PubSub/internal/tracker"
 )
 
+// main est la fonction principale qui initialise et lance le service tracker.
+// Elle charge la configuration, initialise la connexion Kafka et les loggers,
+// et démarre la consommation des messages. Elle gère également l'arrêt gracieux via signaux.
 func main() {
 	// Charger la configuration
 	config := tracker.NewConfig()

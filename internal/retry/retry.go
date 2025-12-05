@@ -1,5 +1,5 @@
 /*
-Package retry provides retry logic with exponential backoff.
+Package retry fournit une logique de relance avec un backoff exponentiel.
 */
 package retry
 
@@ -11,15 +11,18 @@ import (
 	"time"
 )
 
-// Config contains retry configuration.
+// Config contient la configuration pour le mécanisme de relance.
 type Config struct {
-	MaxAttempts  int           // Maximum number of attempts (including first try)
-	InitialDelay time.Duration // Initial delay before first retry
-	MaxDelay     time.Duration // Maximum delay between retries
-	Multiplier   float64       // Multiplier for exponential backoff
+	MaxAttempts  int           // Nombre maximum de tentatives (incluant la première).
+	InitialDelay time.Duration // Délai initial avant la première relance.
+	MaxDelay     time.Duration // Délai maximum entre les relances.
+	Multiplier   float64       // Multiplicateur pour le backoff exponentiel.
 }
 
-// DefaultConfig returns a default retry configuration.
+// DefaultConfig retourne une configuration de relance par défaut.
+//
+// Retourne:
+//   - Config: La structure de configuration initialisée avec des valeurs standards.
 func DefaultConfig() Config {
 	return Config{
 		MaxAttempts:  3,
@@ -29,20 +32,34 @@ func DefaultConfig() Config {
 	}
 }
 
-// PermanentError wraps an error to indicate it should not be retried.
+// PermanentError enveloppe une erreur pour indiquer qu'elle ne doit pas être retentée.
 type PermanentError struct {
 	Err error
 }
 
+// Error retourne le message d'erreur de l'erreur enveloppée.
+//
+// Retourne:
+//   - string: Le message d'erreur.
 func (e *PermanentError) Error() string {
 	return e.Err.Error()
 }
 
+// Unwrap retourne l'erreur sous-jacente.
+//
+// Retourne:
+//   - error: L'erreur originale.
 func (e *PermanentError) Unwrap() error {
 	return e.Err
 }
 
-// Permanent wraps an error to indicate it should not be retried.
+// Permanent enveloppe une erreur pour indiquer qu'elle ne doit pas être retentée.
+//
+// Paramètres:
+//   - err: L'erreur à envelopper.
+//
+// Retourne:
+//   - error: Une erreur de type PermanentError, ou nil si err est nil.
 func Permanent(err error) error {
 	if err == nil {
 		return nil
@@ -50,28 +67,42 @@ func Permanent(err error) error {
 	return &PermanentError{Err: err}
 }
 
-// IsPermanent checks if an error is marked as permanent.
+// IsPermanent vérifie si une erreur est marquée comme permanente.
+//
+// Paramètres:
+//   - err: L'erreur à vérifier.
+//
+// Retourne:
+//   - bool: Vrai si l'erreur est de type PermanentError, faux sinon.
 func IsPermanent(err error) bool {
 	var permanentErr *PermanentError
 	return errors.As(err, &permanentErr)
 }
 
-// Result contains the result of a retry operation.
+// Result contient le résultat d'une opération de relance.
 type Result struct {
-	Attempts int           // Number of attempts made
-	Duration time.Duration // Total duration of all attempts
-	Err      error         // Final error (nil if successful)
+	Attempts int           // Nombre de tentatives effectuées.
+	Duration time.Duration // Durée totale de toutes les tentatives.
+	Err      error         // Erreur finale (nil si succès).
 }
 
-// Do executes the given function with retry logic.
-// The function is retried until it succeeds, returns a permanent error,
-// or the maximum number of attempts is reached.
+// Do exécute la fonction donnée avec une logique de relance.
+// La fonction est relancée jusqu'à ce qu'elle réussisse, retourne une erreur permanente,
+// ou que le nombre maximum de tentatives soit atteint.
+//
+// Paramètres:
+//   - ctx: Le contexte pour l'annulation et les délais.
+//   - cfg: La configuration de relance.
+//   - fn: La fonction à exécuter, retournant une erreur.
+//
+// Retourne:
+//   - Result: Le résultat contenant le nombre de tentatives, la durée et l'erreur finale.
 func Do(ctx context.Context, cfg Config, fn func() error) Result {
 	start := time.Now()
 	var lastErr error
 
 	for attempt := 1; attempt <= cfg.MaxAttempts; attempt++ {
-		// Check context cancellation
+		// Vérification de l'annulation du contexte
 		select {
 		case <-ctx.Done():
 			return Result{
@@ -82,7 +113,7 @@ func Do(ctx context.Context, cfg Config, fn func() error) Result {
 		default:
 		}
 
-		// Execute the function
+		// Exécution de la fonction
 		err := fn()
 		if err == nil {
 			return Result{
@@ -94,7 +125,7 @@ func Do(ctx context.Context, cfg Config, fn func() error) Result {
 
 		lastErr = err
 
-		// Don't retry permanent errors
+		// Ne pas relancer les erreurs permanentes
 		if IsPermanent(err) {
 			return Result{
 				Attempts: attempt,
@@ -103,7 +134,7 @@ func Do(ctx context.Context, cfg Config, fn func() error) Result {
 			}
 		}
 
-		// Don't sleep after the last attempt
+		// Ne pas dormir après la dernière tentative
 		if attempt < cfg.MaxAttempts {
 			delay := calculateDelay(attempt, cfg)
 			select {
@@ -125,25 +156,41 @@ func Do(ctx context.Context, cfg Config, fn func() error) Result {
 	}
 }
 
-// calculateDelay calculates the delay for a given attempt using exponential backoff with jitter.
+// calculateDelay calcule le délai pour une tentative donnée en utilisant un backoff exponentiel avec jitter.
+//
+// Paramètres:
+//   - attempt: Le numéro de la tentative actuelle.
+//   - cfg: La configuration de relance.
+//
+// Retourne:
+//   - time.Duration: La durée à attendre avant la prochaine tentative.
 func calculateDelay(attempt int, cfg Config) time.Duration {
-	// Calculate exponential delay
+	// Calcul du délai exponentiel
 	delay := float64(cfg.InitialDelay) * math.Pow(cfg.Multiplier, float64(attempt-1))
 
-	// Cap at max delay
+	// Plafonnement au délai maximum
 	if delay > float64(cfg.MaxDelay) {
 		delay = float64(cfg.MaxDelay)
 	}
 
-	// Add jitter (±25%)
+	// Ajout du jitter (±25%)
 	jitter := delay * 0.25 * (rand.Float64()*2 - 1)
 	delay += jitter
 
 	return time.Duration(delay)
 }
 
-// DoWithCallback is like Do but calls the provided callback after each failed attempt.
-// This is useful for logging or metrics.
+// DoWithCallback est comme Do mais appelle le callback fourni après chaque tentative échouée.
+// Ceci est utile pour la journalisation ou les métriques.
+//
+// Paramètres:
+//   - ctx: Le contexte pour l'annulation.
+//   - cfg: La configuration de relance.
+//   - fn: La fonction à exécuter.
+//   - onRetry: La fonction de rappel exécutée après un échec. Reçoit le numéro de tentative, l'erreur et le prochain délai.
+//
+// Retourne:
+//   - Result: Le résultat de l'opération.
 func DoWithCallback(ctx context.Context, cfg Config, fn func() error, onRetry func(attempt int, err error, nextDelay time.Duration)) Result {
 	start := time.Now()
 	var lastErr error
