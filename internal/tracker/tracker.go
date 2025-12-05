@@ -22,18 +22,21 @@ import (
 // Config contient la configuration du service tracker.
 // Elle peut être chargée à partir de variables d'environnement.
 type Config struct {
-	KafkaBroker     string        // Adresse du broker Kafka
-	ConsumerGroup   string        // Groupe de consommateurs Kafka
-	Topic           string        // Sujet Kafka à consommer
-	LogFile         string        // Fichier de journal système
-	EventsFile      string        // Fichier de piste d'audit
-	MetricsInterval time.Duration // Intervalle entre les métriques périodiques
-	ReadTimeout     time.Duration // Délai de lecture des messages
-	MaxErrors       int           // Nombre maximum d'erreurs consécutives
+	KafkaBroker     string        // Adresse du broker Kafka.
+	ConsumerGroup   string        // Groupe de consommateurs Kafka.
+	Topic           string        // Sujet Kafka à consommer.
+	LogFile         string        // Fichier de journal système.
+	EventsFile      string        // Fichier de piste d'audit.
+	MetricsInterval time.Duration // Intervalle entre les métriques périodiques.
+	ReadTimeout     time.Duration // Délai de lecture des messages.
+	MaxErrors       int           // Nombre maximum d'erreurs consécutives.
 }
 
 // NewConfig crée une configuration avec des valeurs par défaut,
 // surchargées par les variables d'environnement si elles sont définies.
+//
+// Retourne:
+//   - *Config: La configuration initialisée.
 func NewConfig() *Config {
 	cfg := &Config{
 		KafkaBroker:     config.DefaultKafkaBroker,
@@ -64,14 +67,18 @@ func NewConfig() *Config {
 // L'accès à cette structure est protégé par un mutex pour la sécurité des threads.
 type SystemMetrics struct {
 	mu                sync.RWMutex
-	StartTime         time.Time
-	MessagesReceived  int64
-	MessagesProcessed int64
-	MessagesFailed    int64
-	LastMessageTime   time.Time
+	StartTime         time.Time // Heure de démarrage du suivi.
+	MessagesReceived  int64     // Nombre total de messages reçus.
+	MessagesProcessed int64     // Nombre total de messages traités avec succès.
+	MessagesFailed    int64     // Nombre total de messages échoués.
+	LastMessageTime   time.Time // Heure du dernier message reçu.
 }
 
 // recordMetrics met à jour les compteurs de performance.
+//
+// Paramètres:
+//   - processed: Indique si le message a été traité avec succès.
+//   - failed: Indique si le traitement du message a échoué.
 func (sm *SystemMetrics) recordMetrics(processed, failed bool) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -102,6 +109,12 @@ type Tracker struct {
 }
 
 // New crée une nouvelle instance du service Tracker.
+//
+// Paramètres:
+//   - cfg: La configuration du tracker.
+//
+// Retourne:
+//   - *Tracker: L'instance créée.
 func New(cfg *Config) *Tracker {
 	return &Tracker{
 		config:   cfg,
@@ -111,6 +124,10 @@ func New(cfg *Config) *Tracker {
 }
 
 // Initialize initialise les loggers et le consommateur Kafka.
+// Configure les abonnements aux sujets Kafka.
+//
+// Retourne:
+//   - error: Une erreur si l'initialisation échoue.
 func (t *Tracker) Initialize() error {
 	var err error
 
@@ -157,6 +174,7 @@ func (t *Tracker) Initialize() error {
 }
 
 // Run démarre la boucle de consommation des messages.
+// Bloque jusqu'à l'appel de Stop() ou une erreur critique.
 func (t *Tracker) Run() {
 	t.mu.Lock()
 	t.running = true
@@ -183,6 +201,9 @@ func (t *Tracker) Run() {
 }
 
 // isRunning retourne vrai si le tracker est en cours d'exécution.
+//
+// Retourne:
+//   - bool: L'état d'exécution.
 func (t *Tracker) isRunning() bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -191,6 +212,13 @@ func (t *Tracker) isRunning() bool {
 
 // handleKafkaError gère les erreurs de lecture Kafka.
 // Retourne vrai si le tracker doit s'arrêter.
+//
+// Paramètres:
+//   - err: L'erreur rencontrée.
+//   - consecutiveErrors: Pointeur vers le compteur d'erreurs consécutives.
+//
+// Retourne:
+//   - bool: Vrai s'il faut arrêter le consommateur.
 func (t *Tracker) handleKafkaError(err error, consecutiveErrors *int) bool {
 	kafkaErr, ok := err.(kafka.Error)
 	if !ok {
@@ -235,6 +263,10 @@ func (t *Tracker) handleKafkaError(err error, consecutiveErrors *int) bool {
 }
 
 // processMessage traite un message Kafka individuel.
+// Désérialise, logue et met à jour les métriques.
+//
+// Paramètres:
+//   - msg: Le message Kafka reçu.
 func (t *Tracker) processMessage(msg *kafka.Message) {
 	var order models.Order
 	deserializationErr := json.Unmarshal(msg.Value, &order)
@@ -260,6 +292,7 @@ func (t *Tracker) processMessage(msg *kafka.Message) {
 }
 
 // logPeriodicMetrics écrit les métriques périodiques.
+// Cette fonction s'exécute en tâche de fond.
 func (t *Tracker) logPeriodicMetrics() {
 	ticker := time.NewTicker(t.config.MetricsInterval)
 	defer ticker.Stop()
@@ -294,6 +327,7 @@ func (t *Tracker) logPeriodicMetrics() {
 }
 
 // Stop arrête proprement le tracker.
+// Signale l'arrêt aux goroutines et ferme le canal de stop.
 func (t *Tracker) Stop() {
 	t.mu.Lock()
 	t.running = false
@@ -312,6 +346,7 @@ func (t *Tracker) Stop() {
 }
 
 // Close libère toutes les ressources.
+// Ferme le consommateur Kafka et les fichiers journaux.
 func (t *Tracker) Close() {
 	if t.rawConsumer != nil {
 		t.rawConsumer.Close()
@@ -325,6 +360,9 @@ func (t *Tracker) Close() {
 }
 
 // displayOrder affiche les détails formatés de la commande dans la console.
+//
+// Paramètres:
+//   - order: La commande à afficher.
 func displayOrder(order *models.Order) {
 	fmt.Println("\n" + strings.Repeat("=", 80))
 	fmt.Printf("📦 COMMANDE REÇUE #%d (ID: %s)\n", order.Sequence, order.OrderID)

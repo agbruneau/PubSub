@@ -14,12 +14,19 @@ import (
 
 // Logger gère l'écriture concurrente et sécurisée dans un fichier de log.
 type Logger struct {
-	file    *os.File
-	encoder *json.Encoder
-	mu      sync.Mutex
+	file    *os.File      // Le descripteur de fichier.
+	encoder *json.Encoder // L'encodeur JSON pour écrire dans le fichier.
+	mu      sync.Mutex    // Mutex pour assurer l'écriture thread-safe.
 }
 
 // NewLogger initialise un nouveau Logger pour un fichier donné.
+//
+// Paramètres:
+//   - filename: Le chemin du fichier de log.
+//
+// Retourne:
+//   - *Logger: L'instance du logger initialisée.
+//   - error: Une erreur si l'ouverture du fichier échoue.
 func NewLogger(filename string) (*Logger, error) {
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
@@ -32,6 +39,11 @@ func NewLogger(filename string) (*Logger, error) {
 }
 
 // Log écrit une entrée structurée dans le fichier journal.
+//
+// Paramètres:
+//   - level: Le niveau de sévérité du log (INFO, ERROR).
+//   - message: Le message principal.
+//   - metadata: Des données contextuelles supplémentaires.
 func (l *Logger) Log(level models.LogLevel, message string, metadata map[string]interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -49,6 +61,11 @@ func (l *Logger) Log(level models.LogLevel, message string, metadata map[string]
 }
 
 // LogError est un raccourci pour écrire un message d'erreur dans le fichier journal.
+//
+// Paramètres:
+//   - message: Le message décrivant l'erreur.
+//   - err: L'erreur originale.
+//   - metadata: Des données contextuelles supplémentaires.
 func (l *Logger) LogError(message string, err error, metadata map[string]interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -73,6 +90,11 @@ func (l *Logger) LogError(message string, err error, metadata map[string]interfa
 // Cette fonction est le cœur de l'implémentation du modèle "Audit Trail".
 // Elle est appelée pour CHAQUE message reçu, valide ou non, garantissant
 // qu'aucune donnée entrante n'est perdue.
+//
+// Paramètres:
+//   - msg: Le message Kafka brut.
+//   - order: La commande désérialisée (peut être nil si échec).
+//   - deserializationError: L'erreur de désérialisation éventuelle.
 func (l *Logger) LogEvent(msg *kafka.Message, order *models.Order, deserializationError error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()

@@ -21,19 +21,22 @@ import (
 // Config contient la configuration du service producteur.
 // Elle peut être chargée à partir de variables d'environnement.
 type Config struct {
-	KafkaBroker     string        // Adresse du broker Kafka
-	Topic           string        // Sujet Kafka pour la publication
-	MessageInterval time.Duration // Intervalle entre les messages
-	FlushTimeout    int           // Délai en ms pour le flush final
-	TaxRate         float64       // Taux de taxe à appliquer
-	ShippingFee     float64       // Frais de port
-	Currency        string        // Devise par défaut
-	PaymentMethod   string        // Méthode de paiement par défaut
-	Warehouse       string        // Entrepôt par défaut
+	KafkaBroker     string        // Adresse du broker Kafka.
+	Topic           string        // Sujet Kafka pour la publication.
+	MessageInterval time.Duration // Intervalle entre les messages.
+	FlushTimeout    int           // Délai en ms pour le flush final.
+	TaxRate         float64       // Taux de taxe à appliquer.
+	ShippingFee     float64       // Frais de port.
+	Currency        string        // Devise par défaut.
+	PaymentMethod   string        // Méthode de paiement par défaut.
+	Warehouse       string        // Entrepôt par défaut.
 }
 
 // NewConfig crée une configuration avec des valeurs par défaut,
 // surchargées par les variables d'environnement si elles sont définies.
+//
+// Retourne:
+//   - *Config: La configuration initialisée.
 func NewConfig() *Config {
 	cfg := &Config{
 		KafkaBroker:     config.DefaultKafkaBroker,
@@ -60,10 +63,10 @@ func NewConfig() *Config {
 
 // OrderTemplate définit un modèle pour générer des commandes de test.
 type OrderTemplate struct {
-	User     string  // Identifiant du client
-	Item     string  // Nom de l'article
-	Quantity int     // Quantité commandée
-	Price    float64 // Prix unitaire
+	User     string  // Identifiant du client.
+	Item     string  // Nom de l'article.
+	Quantity int     // Quantité commandée.
+	Price    float64 // Prix unitaire.
 }
 
 // DefaultOrderTemplates contient les modèles de commandes par défaut.
@@ -83,16 +86,22 @@ var DefaultOrderTemplates = []OrderTemplate{
 // OrderProducer est le service principal qui gère la production de messages Kafka.
 // Il encapsule le producteur Kafka, la configuration et les modèles de commandes.
 type OrderProducer struct {
-	config       *Config
-	producer     KafkaProducer   // Interface pour la testabilité
-	rawProducer  *kafka.Producer // Garder une référence pour les rapports de livraison
+	config       *Config         // Configuration du producteur.
+	producer     KafkaProducer   // Interface pour la testabilité.
+	rawProducer  *kafka.Producer // Garder une référence pour les rapports de livraison.
 	deliveryChan chan kafka.Event
-	templates    []OrderTemplate
-	sequence     int
-	running      bool
+	templates    []OrderTemplate // Modèles de commandes à utiliser.
+	sequence     int             // Séquenceur interne pour les ID.
+	running      bool            // État de fonctionnement.
 }
 
 // New crée une nouvelle instance du service OrderProducer.
+//
+// Paramètres:
+//   - cfg: La configuration du producteur.
+//
+// Retourne:
+//   - *OrderProducer: L'instance créée.
 func New(cfg *Config) *OrderProducer {
 	return &OrderProducer{
 		config:    cfg,
@@ -102,6 +111,10 @@ func New(cfg *Config) *OrderProducer {
 }
 
 // Initialize initialise le producteur Kafka.
+// Crée la connexion au broker et démarre le gestionnaire de rapports.
+//
+// Retourne:
+//   - error: Une erreur si la connexion échoue.
 func (p *OrderProducer) Initialize() error {
 	var err error
 	p.rawProducer, err = kafka.NewProducer(&kafka.ConfigMap{
@@ -119,6 +132,7 @@ func (p *OrderProducer) Initialize() error {
 }
 
 // handleDeliveryReports traite les rapports de livraison dans une goroutine dédiée.
+// Affiche le succès ou l'échec de chaque message produit.
 func (p *OrderProducer) handleDeliveryReports() {
 	for e := range p.deliveryChan {
 		m := e.(*kafka.Message)
@@ -134,6 +148,13 @@ func (p *OrderProducer) handleDeliveryReports() {
 }
 
 // GenerateOrder crée une commande enrichie à partir d'un modèle et d'un numéro de séquence.
+//
+// Paramètres:
+//   - template: Le modèle de commande à utiliser.
+//   - sequence: Le numéro de séquence unique.
+//
+// Retourne:
+//   - models.Order: La commande complète générée.
 func (p *OrderProducer) GenerateOrder(template OrderTemplate, sequence int) models.Order {
 	// Calculs financiers
 	itemTotal := float64(template.Quantity) * template.Price
@@ -192,6 +213,10 @@ func (p *OrderProducer) GenerateOrder(template OrderTemplate, sequence int) mode
 }
 
 // ProduceOrder génère et envoie une commande au sujet Kafka.
+// Sélectionne un modèle de commande de manière cyclique.
+//
+// Retourne:
+//   - error: Une erreur si la production échoue.
 func (p *OrderProducer) ProduceOrder() error {
 	template := p.templates[p.sequence%len(p.templates)]
 	order := p.GenerateOrder(template, p.sequence)
@@ -216,6 +241,10 @@ func (p *OrderProducer) ProduceOrder() error {
 }
 
 // Run démarre la boucle de production de messages.
+// Continue jusqu'à ce qu'un signal d'arrêt soit reçu sur stopChan.
+//
+// Paramètres:
+//   - stopChan: Le canal de signal d'arrêt.
 func (p *OrderProducer) Run(stopChan <-chan os.Signal) {
 	p.running = true
 	for p.running {
@@ -233,6 +262,7 @@ func (p *OrderProducer) Run(stopChan <-chan os.Signal) {
 }
 
 // Close ferme proprement le producteur et envoie les messages en attente.
+// Cette méthode bloque jusqu'à ce que les messages soient vidés ou le timeout atteint.
 func (p *OrderProducer) Close() {
 	fmt.Println("⏳ Envoi des messages restants dans la file d'attente...")
 	remainingMessages := p.producer.Flush(p.config.FlushTimeout)

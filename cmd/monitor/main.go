@@ -17,6 +17,9 @@ import (
 	ui "github.com/gizak/termui/v3"
 )
 
+// main est la fonction principale qui initialise et lance le moniteur TUI.
+// Elle configure l'interface utilisateur, lance la surveillance des fichiers de logs en arrière-plan,
+// et gère la boucle d'événements pour l'affichage et les interactions utilisateur.
 func main() {
 	if err := ui.Init(); err != nil {
 		fmt.Printf("Erreur lors de l'initialisation de l'UI: %v\n", err)

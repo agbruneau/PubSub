@@ -12,6 +12,7 @@ Bienvenue dans le projet de démonstration **Kafka Order Tracking**. Ce projet e
 - [Configuration](#-configuration)
 - [Structure du Projet](#-structure-du-projet)
 - [Développement et Tests](#-développement-et-tests)
+- [Documentation](#-documentation)
 
 ---
 
@@ -25,6 +26,7 @@ Ce projet met en œuvre les meilleures pratiques de l'ingénierie logicielle dis
 - **Dead Letter Queue (DLQ)** : Messages en échec envoyés vers `orders-dlq` pour analyse.
 - **Graceful Shutdown** : Gestion propre des signaux (SIGTERM, SIGINT).
 - **Configuration Externe** : Fichier YAML + variables d'environnement.
+- **Code Documenté** : Chaque fonction et type exporté possède une documentation complète (GoDoc) en français.
 
 ---
 
@@ -248,3 +250,20 @@ go test -tags kafka -v ./internal/producer/...  # Producer
 > ```bash
 > docker run --rm -v $(pwd):/app -w /app golang:1.22 make build
 > ```
+
+---
+
+## 📚 Documentation
+
+Le code source est entièrement documenté en français suivant les conventions GoDoc. Pour consulter la documentation d'un paquet spécifique :
+
+```bash
+go doc cmd/producer
+go doc internal/config
+go doc pkg/models
+```
+
+Chaque type et fonction publique inclut :
+- Une description de son rôle
+- La description de ses paramètres
+- La description de ses valeurs de retour
