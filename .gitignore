@@ -1,0 +1,24 @@
+# Fichiers de logs
+tracker.log
+tracker.events
+
+# Binaires Go (ancien format à la racine)
+producer
+tracker
+monitor
+
+# Nouveau répertoire de binaires
+bin/
+
+# Fichiers PID
+*.pid
+
+# Fichiers de couverture de tests
+coverage.out
+coverage.html
+
+# Configuration locale (utiliser config.yaml.example comme modèle)
+config.yaml
+
+# Répertoire de logs Docker
+logs/

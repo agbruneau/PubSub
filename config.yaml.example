@@ -1,0 +1,41 @@
+# =============================================================================
+# Configuration PubSub Kafka Demo
+# =============================================================================
+# Copy this file to config.yaml and adjust values as needed.
+# Environment variables override these values.
+# =============================================================================
+
+app:
+  env: "development"           # development, staging, production
+  log_level: "info"            # debug, info, warn, error
+
+kafka:
+  broker: "localhost:9092"     # KAFKA_BROKER
+  topic: "orders"              # KAFKA_TOPIC
+  consumer_group: "order-tracker-group"  # KAFKA_CONSUMER_GROUP
+
+producer:
+  interval_ms: 2000            # Time between messages (PRODUCER_INTERVAL_MS)
+  flush_timeout_ms: 5000       # Flush timeout for producer
+
+tracker:
+  log_file: "tracker.log"           # TRACKER_LOG_FILE
+  events_file: "tracker.events"     # TRACKER_EVENTS_FILE
+  metrics_interval_seconds: 30      # Interval for periodic metrics
+  read_timeout_ms: 1000             # Kafka read timeout
+  max_consecutive_errors: 5         # Max errors before shutdown
+
+monitor:
+  max_recent_logs: 100         # Number of recent logs to display
+  max_recent_events: 50        # Number of recent events to display
+  ui_update_ms: 1000           # UI refresh rate
+
+retry:
+  max_attempts: 3              # RETRY_MAX_ATTEMPTS - Max retry attempts
+  initial_delay_ms: 100        # Initial delay before first retry
+  max_delay_ms: 5000           # Maximum delay between retries
+  multiplier: 2.0              # Exponential backoff multiplier
+
+dlq:
+  enabled: true                # DLQ_ENABLED - Enable Dead Letter Queue
+  topic: "orders-dlq"          # DLQ_TOPIC - DLQ topic name
