@@ -1,32 +1,29 @@
-//go:build kafka
-// +build kafka
-
 package producer
 
 import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-// KafkaProducer defines the interface for Kafka producer operations.
-// This abstraction enables dependency injection and simplifies testing.
+// KafkaProducer définit l'interface pour les opérations du producteur Kafka.
+// Cette abstraction permet l'injection de dépendances et simplifie les tests.
 type KafkaProducer interface {
-	// Produce sends a message to Kafka asynchronously.
+	// Produce envoie un message à Kafka de manière asynchrone.
 	Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error
 
-	// Flush waits for all messages to be delivered, up to timeout ms.
-	// Returns the number of outstanding messages still in queue.
+	// Flush attend que tous les messages soient livrés, jusqu'au délai spécifié en ms.
+	// Retourne le nombre de messages restants dans la file d'attente.
 	Flush(timeoutMs int) int
 
-	// Close closes the producer.
+	// Close ferme le producteur.
 	Close()
 }
 
-// kafkaProducerWrapper wraps a real Kafka producer to implement the interface.
+// kafkaProducerWrapper enveloppe un vrai producteur Kafka pour implémenter l'interface.
 type kafkaProducerWrapper struct {
 	producer *kafka.Producer
 }
 
-// newKafkaProducerWrapper creates a wrapper around a real Kafka producer.
+// newKafkaProducerWrapper crée une enveloppe autour d'un vrai producteur Kafka.
 func newKafkaProducerWrapper(producer *kafka.Producer) KafkaProducer {
 	return &kafkaProducerWrapper{producer: producer}
 }

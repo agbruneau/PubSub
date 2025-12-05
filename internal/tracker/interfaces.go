@@ -1,6 +1,3 @@
-//go:build kafka
-// +build kafka
-
 package tracker
 
 import (
@@ -9,26 +6,26 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-// KafkaConsumer defines the interface for Kafka consumer operations.
-// This abstraction enables dependency injection and simplifies testing.
+// KafkaConsumer définit l'interface pour les opérations du consommateur Kafka.
+// Cette abstraction permet l'injection de dépendances et simplifie les tests.
 type KafkaConsumer interface {
-	// SubscribeTopics subscribes the consumer to a set of topics.
+	// SubscribeTopics abonne le consommateur à un ensemble de sujets.
 	SubscribeTopics(topics []string, rebalanceCb kafka.RebalanceCb) error
 
-	// ReadMessage reads the next message from Kafka.
-	// It blocks for up to the specified timeout.
+	// ReadMessage lit le prochain message depuis Kafka.
+	// Il bloque jusqu'à l'expiration du délai spécifié.
 	ReadMessage(timeout time.Duration) (*kafka.Message, error)
 
-	// Close closes the consumer, leaving the group and releasing resources.
+	// Close ferme le consommateur, quittant le groupe et libérant les ressources.
 	Close() error
 }
 
-// kafkaConsumerWrapper wraps a real Kafka consumer to implement the interface.
+// kafkaConsumerWrapper enveloppe un vrai consommateur Kafka pour implémenter l'interface.
 type kafkaConsumerWrapper struct {
 	consumer *kafka.Consumer
 }
 
-// newKafkaConsumerWrapper creates a wrapper around a real Kafka consumer.
+// newKafkaConsumerWrapper crée une enveloppe autour d'un vrai consommateur Kafka.
 func newKafkaConsumerWrapper(consumer *kafka.Consumer) KafkaConsumer {
 	return &kafkaConsumerWrapper{consumer: consumer}
 }

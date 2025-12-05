@@ -1,11 +1,8 @@
-//go:build kafka
-// +build kafka
-
 /*
-Package tracker provides the Kafka message consumer for the PubSub system.
+Package tracker fournit le consommateur de messages Kafka pour le système PubSub.
 
-This package implements message consumption, logging, and metrics collection,
-following the Audit Trail and Application Health Monitoring patterns.
+Ce paquet implémente la consommation de messages, la journalisation et la collecte de métriques,
+suivant les modèles "Audit Trail" et "Application Health Monitoring".
 */
 package tracker
 
@@ -22,21 +19,21 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-// Config contains the tracker service configuration.
-// It can be loaded from environment variables.
+// Config contient la configuration du service tracker.
+// Elle peut être chargée à partir de variables d'environnement.
 type Config struct {
-	KafkaBroker     string        // Kafka broker address
-	ConsumerGroup   string        // Kafka consumer group
-	Topic           string        // Kafka topic to consume
-	LogFile         string        // System log file
-	EventsFile      string        // Audit trail file
-	MetricsInterval time.Duration // Interval between periodic metrics
-	ReadTimeout     time.Duration // Message read timeout
-	MaxErrors       int           // Maximum consecutive errors
+	KafkaBroker     string        // Adresse du broker Kafka
+	ConsumerGroup   string        // Groupe de consommateurs Kafka
+	Topic           string        // Sujet Kafka à consommer
+	LogFile         string        // Fichier de journal système
+	EventsFile      string        // Fichier de piste d'audit
+	MetricsInterval time.Duration // Intervalle entre les métriques périodiques
+	ReadTimeout     time.Duration // Délai de lecture des messages
+	MaxErrors       int           // Nombre maximum d'erreurs consécutives
 }
 
-// NewConfig creates a configuration with default values,
-// overridden by environment variables if defined.
+// NewConfig crée une configuration avec des valeurs par défaut,
+// surchargées par les variables d'environnement si elles sont définies.
 func NewConfig() *Config {
 	cfg := &Config{
 		KafkaBroker:     config.DefaultKafkaBroker,
@@ -49,7 +46,7 @@ func NewConfig() *Config {
 		MaxErrors:       config.TrackerMaxConsecutiveErrors,
 	}
 
-	// Override from environment variables
+	// Surcharger depuis les variables d'environnement
 	if broker := os.Getenv("KAFKA_BROKER"); broker != "" {
 		cfg.KafkaBroker = broker
 	}
@@ -63,8 +60,8 @@ func NewConfig() *Config {
 	return cfg
 }
 
-// SystemMetrics collects consumer performance metrics.
-// Access to this structure is protected by a mutex for thread safety.
+// SystemMetrics collecte les métriques de performance du consommateur.
+// L'accès à cette structure est protégé par un mutex pour la sécurité des threads.
 type SystemMetrics struct {
 	mu                sync.RWMutex
 	StartTime         time.Time
@@ -74,7 +71,7 @@ type SystemMetrics struct {
 	LastMessageTime   time.Time
 }
 
-// recordMetrics updates performance counters.
+// recordMetrics met à jour les compteurs de performance.
 func (sm *SystemMetrics) recordMetrics(processed, failed bool) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -89,22 +86,22 @@ func (sm *SystemMetrics) recordMetrics(processed, failed bool) {
 	sm.LastMessageTime = time.Now()
 }
 
-// Tracker is the main service that manages Kafka message consumption.
-// It encapsulates loggers, metrics, and configuration for dependency injection
-// and better testability.
+// Tracker est le service principal qui gère la consommation de messages Kafka.
+// Il encapsule les loggers, les métriques et la configuration pour l'injection de dépendances
+// et une meilleure testabilité.
 type Tracker struct {
 	config      *Config
 	logLogger   *Logger
 	eventLogger *Logger
 	metrics     *SystemMetrics
-	consumer    KafkaConsumer   // Interface for testability
-	rawConsumer *kafka.Consumer // Keep reference for close
+	consumer    KafkaConsumer   // Interface pour la testabilité
+	rawConsumer *kafka.Consumer // Garder une référence pour la fermeture
 	stopChan    chan struct{}
 	running     bool
 	mu          sync.Mutex
 }
 
-// New creates a new instance of the Tracker service.
+// New crée une nouvelle instance du service Tracker.
 func New(cfg *Config) *Tracker {
 	return &Tracker{
 		config:   cfg,
@@ -113,59 +110,59 @@ func New(cfg *Config) *Tracker {
 	}
 }
 
-// Initialize initializes the loggers and Kafka consumer.
+// Initialize initialise les loggers et le consommateur Kafka.
 func (t *Tracker) Initialize() error {
 	var err error
 
-	// Initialize loggers
+	// Initialiser les loggers
 	t.logLogger, err = NewLogger(t.config.LogFile)
 	if err != nil {
-		return fmt.Errorf("unable to initialize system logger: %w", err)
+		return fmt.Errorf("impossible d'initialiser le logger système: %w", err)
 	}
 
 	t.eventLogger, err = NewLogger(t.config.EventsFile)
 	if err != nil {
 		t.logLogger.Close()
-		return fmt.Errorf("unable to initialize event logger: %w", err)
+		return fmt.Errorf("impossible d'initialiser le logger d'événements: %w", err)
 	}
 
-	t.logLogger.Log(models.LogLevelINFO, "Logging system initialized", map[string]interface{}{
+	t.logLogger.Log(models.LogLevelINFO, "Système de journalisation initialisé", map[string]interface{}{
 		"log_file":    t.config.LogFile,
 		"events_file": t.config.EventsFile,
 	})
 
-	// Initialize Kafka consumer
+	// Initialiser le consommateur Kafka
 	t.rawConsumer, err = kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers": t.config.KafkaBroker,
 		"group.id":          t.config.ConsumerGroup,
 		"auto.offset.reset": "earliest",
 	})
 	if err != nil {
-		t.logLogger.LogError("Error creating consumer", err, nil)
+		t.logLogger.LogError("Erreur lors de la création du consommateur", err, nil)
 		t.Close()
-		return fmt.Errorf("unable to create Kafka consumer: %w", err)
+		return fmt.Errorf("impossible de créer le consommateur Kafka: %w", err)
 	}
 	t.consumer = newKafkaConsumerWrapper(t.rawConsumer)
 
-	// Subscribe to topic
+	// S'abonner au sujet
 	err = t.consumer.SubscribeTopics([]string{t.config.Topic}, nil)
 	if err != nil {
-		t.logLogger.LogError("Error subscribing to topic", err, map[string]interface{}{"topic": t.config.Topic})
+		t.logLogger.LogError("Erreur lors de l'abonnement au sujet", err, map[string]interface{}{"topic": t.config.Topic})
 		t.Close()
-		return fmt.Errorf("unable to subscribe to topic: %w", err)
+		return fmt.Errorf("impossible de s'abonner au sujet: %w", err)
 	}
 
-	t.logLogger.Log(models.LogLevelINFO, "Consumer started and subscribed to topic '"+t.config.Topic+"'", nil)
+	t.logLogger.Log(models.LogLevelINFO, "Consommateur démarré et abonné au sujet '"+t.config.Topic+"'", nil)
 	return nil
 }
 
-// Run starts the message consumption loop.
+// Run démarre la boucle de consommation des messages.
 func (t *Tracker) Run() {
 	t.mu.Lock()
 	t.running = true
 	t.mu.Unlock()
 
-	// Start periodic metrics
+	// Démarrer les métriques périodiques
 	go t.logPeriodicMetrics()
 
 	consecutiveErrors := 0
@@ -185,28 +182,28 @@ func (t *Tracker) Run() {
 	}
 }
 
-// isRunning returns true if the tracker is running.
+// isRunning retourne vrai si le tracker est en cours d'exécution.
 func (t *Tracker) isRunning() bool {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	return t.running
 }
 
-// handleKafkaError handles Kafka read errors.
-// Returns true if the tracker should stop.
+// handleKafkaError gère les erreurs de lecture Kafka.
+// Retourne vrai si le tracker doit s'arrêter.
 func (t *Tracker) handleKafkaError(err error, consecutiveErrors *int) bool {
 	kafkaErr, ok := err.(kafka.Error)
 	if !ok {
 		return false
 	}
 
-	// Normal timeout, not an error
+	// Timeout normal, pas une erreur
 	if kafkaErr.Code() == kafka.ErrTimedOut {
 		*consecutiveErrors = 0
 		return false
 	}
 
-	// Check if it's a critical connection error
+	// Vérifier si c'est une erreur de connexion critique
 	errorMsg := err.Error()
 	isShutdownError := strings.Contains(errorMsg, "brokers are down") ||
 		strings.Contains(errorMsg, "Connection refused") ||
@@ -215,7 +212,7 @@ func (t *Tracker) handleKafkaError(err error, consecutiveErrors *int) bool {
 	if isShutdownError {
 		*consecutiveErrors++
 		if *consecutiveErrors >= t.config.MaxErrors {
-			t.logLogger.Log(models.LogLevelINFO, "Kafka appears to be down, stopping consumer", map[string]interface{}{
+			t.logLogger.Log(models.LogLevelINFO, "Kafka semble indisponible, arrêt du consommateur", map[string]interface{}{
 				"consecutive_errors": *consecutiveErrors,
 				"reason":             "brokers_unavailable",
 			})
@@ -224,11 +221,11 @@ func (t *Tracker) handleKafkaError(err error, consecutiveErrors *int) bool {
 		return false
 	}
 
-	// Other errors
-	t.logLogger.LogError("Kafka message read error", err, nil)
+	// Autres erreurs
+	t.logLogger.LogError("Erreur de lecture du message Kafka", err, nil)
 	*consecutiveErrors++
 	if *consecutiveErrors >= t.config.MaxErrors {
-		t.logLogger.LogError("Too many consecutive errors, stopping consumer", err, map[string]interface{}{
+		t.logLogger.LogError("Trop d'erreurs consécutives, arrêt du consommateur", err, map[string]interface{}{
 			"consecutive_errors": *consecutiveErrors,
 		})
 		return true
@@ -237,22 +234,22 @@ func (t *Tracker) handleKafkaError(err error, consecutiveErrors *int) bool {
 	return false
 }
 
-// processMessage processes an individual Kafka message.
+// processMessage traite un message Kafka individuel.
 func (t *Tracker) processMessage(msg *kafka.Message) {
 	var order models.Order
 	deserializationErr := json.Unmarshal(msg.Value, &order)
 
-	// Log the event (always)
+	// Log de l'événement (toujours)
 	var orderForLog *models.Order
 	if deserializationErr == nil {
 		orderForLog = &order
 	}
 	t.eventLogger.LogEvent(msg, orderForLog, deserializationErr)
 
-	// Update metrics and process the message
+	// Mettre à jour les métriques et traiter le message
 	if deserializationErr != nil {
 		t.metrics.recordMetrics(false, true)
-		t.logLogger.LogError("Message deserialization error", deserializationErr, map[string]interface{}{
+		t.logLogger.LogError("Erreur de désérialisation du message", deserializationErr, map[string]interface{}{
 			"kafka_offset": msg.TopicPartition.Offset,
 			"raw_message":  string(msg.Value),
 		})
@@ -262,7 +259,7 @@ func (t *Tracker) processMessage(msg *kafka.Message) {
 	}
 }
 
-// logPeriodicMetrics writes periodic metrics.
+// logPeriodicMetrics écrit les métriques périodiques.
 func (t *Tracker) logPeriodicMetrics() {
 	ticker := time.NewTicker(t.config.MetricsInterval)
 	defer ticker.Stop()
@@ -284,7 +281,7 @@ func (t *Tracker) logPeriodicMetrics() {
 			}
 			t.metrics.mu.RUnlock()
 
-			t.logLogger.Log(models.LogLevelINFO, "Periodic system metrics", map[string]interface{}{
+			t.logLogger.Log(models.LogLevelINFO, "Métriques système périodiques", map[string]interface{}{
 				"uptime_seconds":       uptime.Seconds(),
 				"messages_received":    t.metrics.MessagesReceived,
 				"messages_processed":   t.metrics.MessagesProcessed,
@@ -296,7 +293,7 @@ func (t *Tracker) logPeriodicMetrics() {
 	}
 }
 
-// Stop properly stops the tracker.
+// Stop arrête proprement le tracker.
 func (t *Tracker) Stop() {
 	t.mu.Lock()
 	t.running = false
@@ -304,9 +301,9 @@ func (t *Tracker) Stop() {
 
 	close(t.stopChan)
 
-	// Final log
+	// Log final
 	uptime := time.Since(t.metrics.StartTime)
-	t.logLogger.Log(models.LogLevelINFO, "Consumer stopped properly", map[string]interface{}{
+	t.logLogger.Log(models.LogLevelINFO, "Consommateur arrêté proprement", map[string]interface{}{
 		"uptime_seconds":           uptime.Seconds(),
 		"total_messages_received":  t.metrics.MessagesReceived,
 		"total_messages_processed": t.metrics.MessagesProcessed,
@@ -314,7 +311,7 @@ func (t *Tracker) Stop() {
 	})
 }
 
-// Close releases all resources.
+// Close libère toutes les ressources.
 func (t *Tracker) Close() {
 	if t.rawConsumer != nil {
 		t.rawConsumer.Close()
@@ -327,14 +324,14 @@ func (t *Tracker) Close() {
 	}
 }
 
-// displayOrder displays formatted order details to the console.
+// displayOrder affiche les détails formatés de la commande dans la console.
 func displayOrder(order *models.Order) {
 	fmt.Println("\n" + strings.Repeat("=", 80))
-	fmt.Printf("📦 ORDER RECEIVED #%d (ID: %s)\n", order.Sequence, order.OrderID)
+	fmt.Printf("📦 COMMANDE REÇUE #%d (ID: %s)\n", order.Sequence, order.OrderID)
 	fmt.Println(strings.Repeat("-", 80))
-	fmt.Printf("Customer: %s (%s)\n", order.CustomerInfo.Name, order.CustomerInfo.CustomerID)
-	fmt.Printf("Status: %s | Total: %.2f %s\n", order.Status, order.Total, order.Currency)
-	fmt.Println("Items:")
+	fmt.Printf("Client: %s (%s)\n", order.CustomerInfo.Name, order.CustomerInfo.CustomerID)
+	fmt.Printf("Statut: %s | Total: %.2f %s\n", order.Status, order.Total, order.Currency)
+	fmt.Println("Articles:")
 	for _, item := range order.Items {
 		fmt.Printf("  - %s (x%d) @ %.2f %s\n", item.ItemName, item.Quantity, item.UnitPrice, order.Currency)
 	}

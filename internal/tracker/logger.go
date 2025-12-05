@@ -1,6 +1,3 @@
-//go:build kafka
-// +build kafka
-
 package tracker
 
 import (
@@ -15,18 +12,18 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-// Logger manages concurrent and safe writing to a log file.
+// Logger gère l'écriture concurrente et sécurisée dans un fichier de log.
 type Logger struct {
 	file    *os.File
 	encoder *json.Encoder
 	mu      sync.Mutex
 }
 
-// NewLogger initializes a new Logger for a given file.
+// NewLogger initialise un nouveau Logger pour un fichier donné.
 func NewLogger(filename string) (*Logger, error) {
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		return nil, fmt.Errorf("unable to open file %s: %v", filename, err)
+		return nil, fmt.Errorf("impossible d'ouvrir le fichier %s: %v", filename, err)
 	}
 	return &Logger{
 		file:    file,
@@ -34,7 +31,7 @@ func NewLogger(filename string) (*Logger, error) {
 	}, nil
 }
 
-// Log writes a structured entry to the log file.
+// Log écrit une entrée structurée dans le fichier journal.
 func (l *Logger) Log(level models.LogLevel, message string, metadata map[string]interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -47,11 +44,11 @@ func (l *Logger) Log(level models.LogLevel, message string, metadata map[string]
 		Metadata:  metadata,
 	}
 	if err := l.encoder.Encode(entry); err != nil {
-		fmt.Fprintf(os.Stderr, "Log encoding error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Erreur d'encodage du log: %v\n", err)
 	}
 }
 
-// LogError is a shortcut to write an error message to the log file.
+// LogError est un raccourci pour écrire un message d'erreur dans le fichier journal.
 func (l *Logger) LogError(message string, err error, metadata map[string]interface{}) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -68,14 +65,14 @@ func (l *Logger) LogError(message string, err error, metadata map[string]interfa
 		Metadata:  metadata,
 	}
 	if encodeErr := l.encoder.Encode(entry); encodeErr != nil {
-		fmt.Fprintf(os.Stderr, "Error log encoding error: %v\n", encodeErr)
+		fmt.Fprintf(os.Stderr, "Erreur d'encodage du log d'erreur: %v\n", encodeErr)
 	}
 }
 
-// LogEvent writes a complete message record to the events file.
-// This function is the core of the "Audit Trail" pattern implementation.
-// It is called for EVERY message received, valid or not, ensuring
-// no incoming data is lost.
+// LogEvent écrit un enregistrement complet de message dans le fichier d'événements.
+// Cette fonction est le cœur de l'implémentation du modèle "Audit Trail".
+// Elle est appelée pour CHAQUE message reçu, valide ou non, garantissant
+// qu'aucune donnée entrante n'est perdue.
 func (l *Logger) LogEvent(msg *kafka.Message, order *models.Order, deserializationError error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -101,7 +98,7 @@ func (l *Logger) LogEvent(msg *kafka.Message, order *models.Order, deserializati
 	if deserialized {
 		orderJSON, marshalErr := json.Marshal(order)
 		if marshalErr != nil {
-			fmt.Fprintf(os.Stderr, "Order serialization error: %v\n", marshalErr)
+			fmt.Fprintf(os.Stderr, "Erreur de sérialisation de la commande: %v\n", marshalErr)
 		} else {
 			event.OrderFull = json.RawMessage(orderJSON)
 		}
@@ -112,15 +109,15 @@ func (l *Logger) LogEvent(msg *kafka.Message, order *models.Order, deserializati
 	}
 
 	if err := l.encoder.Encode(event); err != nil {
-		fmt.Fprintf(os.Stderr, "Event encoding error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Erreur d'encodage de l'événement: %v\n", err)
 	}
 }
 
-// Close properly closes the log files.
+// Close ferme proprement les fichiers journaux.
 func (l *Logger) Close() {
 	if l != nil && l.file != nil {
 		if err := l.file.Close(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error closing log file: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Erreur lors de la fermeture du fichier journal: %v\n", err)
 		}
 	}
 }
