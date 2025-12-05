@@ -1,79 +1,79 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 # ==============================================================================
-# SCRIPT DE DÉMARRAGE DE L'APPLICATION KAFKA DEMO
+# SCRIPT DE DÃ‰MARRAGE DE L'APPLICATION KAFKA DEMO
 # ==============================================================================
 #
-# Ce script orchestre le démarrage complet de l'environnement de démonstration.
-# Il exécute les étapes suivantes dans un ordre précis pour garantir que
-# tous les composants sont prêts et connectés correctement.
+# Ce script orchestre le dÃ©marrage complet de l'environnement de dÃ©monstration.
+# Il exÃ©cute les Ã©tapes suivantes dans un ordre prÃ©cis pour garantir que
+# tous les composants sont prÃªts et connectÃ©s correctement.
 #
-# Étapes exécutées :
-# 1. Démarrage des conteneurs Docker : Lance le service Kafka en arrière-plan
+# Ã‰tapes exÃ©cutÃ©es :
+# 1. DÃ©marrage des conteneurs Docker : Lance le service Kafka en arriÃ¨re-plan
 #    en utilisant la configuration de `docker-compose.yaml`.
-# 2. Pause d'initialisation : Attend un temps défini (30 secondes) pour
-#    s'assurer que le broker Kafka est entièrement initialisé et prêt à
+# 2. Pause d'initialisation : Attend un temps dÃ©fini (30 secondes) pour
+#    s'assurer que le broker Kafka est entiÃ¨rement initialisÃ© et prÃªt Ã 
 #    accepter des connexions et des commandes.
-# 3. Création du topic Kafka : Crée le topic 'orders', qui est le canal de
+# 3. CrÃ©ation du topic Kafka : CrÃ©e le topic 'orders', qui est le canal de
 #    communication entre le producteur et le consommateur.
-# 4. Installation des dépendances Go : Exécute `go mod download` pour
-#    télécharger les bibliothèques nécessaires (client Kafka, UUID).
-# 5. Lancement du consommateur (`tracker`) : Démarre le consommateur en
-#    arrière-plan.
-# 6. Lancement du producteur (`producer`) : Démarre le producteur en
-#    arrière-plan.
+# 4. Installation des dÃ©pendances Go : ExÃ©cute `go mod download` pour
+#    tÃ©lÃ©charger les bibliothÃ¨ques nÃ©cessaires (client Kafka, UUID).
+# 5. Lancement du consommateur (`tracker`) : DÃ©marre le consommateur en
+#    arriÃ¨re-plan.
+# 6. Lancement du producteur (`producer`) : DÃ©marre le producteur en
+#    arriÃ¨re-plan.
 #
-# Note : Une fois ce script terminé, lancez le moniteur dans ce même terminal
+# Note : Une fois ce script terminÃ©, lancez le moniteur dans ce mÃªme terminal
 #        ou un autre avec : ./bin/monitor
 #
 # ------------------------------------------------------------------------------
 
-# Active le mode "verbose" pour afficher chaque commande avant son exécution.
-# Utile pour le débogage.
+# Active le mode "verbose" pour afficher chaque commande avant son exÃ©cution.
+# Utile pour le dÃ©bogage.
 set -x
 
-# Configure le script pour qu'il s'arrête immédiatement en cas d'erreur.
+# Configure le script pour qu'il s'arrÃªte immÃ©diatement en cas d'erreur.
 # -e : quitte si une commande se termine avec un statut non nul.
-# -o pipefail : quitte si une commande dans un pipeline échoue.
+# -o pipefail : quitte si une commande dans un pipeline Ã©choue.
 set -e
 set -o pipefail
 
-# Obtenir le répertoire du script
+# Obtenir le rÃ©pertoire du script
 script_dir=$(dirname "$0")
 
-# Création du dossier de logs
-echo "📂 Création du dossier de logs..."
+# CrÃ©ation du dossier de logs
+echo "ðŸ“‚ CrÃ©ation du dossier de logs..."
 mkdir -p logs
 
-# Étape 1: Démarrage des conteneurs Docker
-echo "🚀 Démarrage des conteneurs Docker (Kafka)..."
+# Ã‰tape 1: DÃ©marrage des conteneurs Docker
+echo "ðŸš€ DÃ©marrage des conteneurs Docker (Kafka)..."
 sudo docker compose up -d
 
-# Étape 2: Attente active de la disponibilité de Kafka
-echo "⏳ Attente de la disponibilité du broker Kafka..."
+# Ã‰tape 2: Attente active de la disponibilitÃ© de Kafka
+echo "â³ Attente de la disponibilitÃ© du broker Kafka..."
 max_attempts=30
 attempt=0
 kafka_ready=false
 
 while [ $attempt -lt $max_attempts ]; do
   if sudo docker exec kafka kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
-    echo "✅ Kafka est prêt !"
+    echo "âœ… Kafka est prÃªt !"
     kafka_ready=true
     break
   fi
   attempt=$((attempt + 1))
-  echo "Kafka n'est pas encore prêt, tentative $attempt/$max_attempts..."
+  echo "Kafka n'est pas encore prÃªt, tentative $attempt/$max_attempts..."
   sleep 2
 done
 
 if [ "$kafka_ready" = false ]; then
-  echo "❌ Erreur : Kafka n'a pas pu démarrer dans le délai imparti"
+  echo "âŒ Erreur : Kafka n'a pas pu dÃ©marrer dans le dÃ©lai imparti"
   exit 1
 fi
 
-# Étape 3: Création du topic Kafka 'orders'
-# Cette commande est idempotente ; elle ne fera rien si le topic existe déjà.
-echo "📝 Création du topic Kafka 'orders' (s'il n'existe pas)..."
+# Ã‰tape 3: CrÃ©ation du topic Kafka 'orders'
+# Cette commande est idempotente ; elle ne fera rien si le topic existe dÃ©jÃ .
+echo "ðŸ“ CrÃ©ation du topic Kafka 'orders' (s'il n'existe pas)..."
 sudo docker exec kafka kafka-topics \
   --bootstrap-server localhost:9092 \
   --create \
@@ -82,31 +82,47 @@ sudo docker exec kafka kafka-topics \
   --partitions 1 \
   --replication-factor 1
 
-# Étape 4: Téléchargement des dépendances Go et compilation
-echo "📦 Téléchargement des dépendances Go et compilation..."
+# Ã‰tape 4: TÃ©lÃ©chargement des dÃ©pendances Go et compilation
+echo "ðŸ“¦ TÃ©lÃ©chargement des dÃ©pendances Go et compilation..."
 go mod download
 
 # Compilation des binaires
-echo "🔨 Compilation des binaires..."
+echo "ðŸ”¨ Compilation des binaires..."
 mkdir -p bin
 go build -tags kafka -o bin/producer ./cmd/producer
 go build -tags kafka -o bin/tracker ./cmd/tracker
 go build -o bin/monitor ./cmd/monitor
 
-# Étape 5: Lancement du consommateur (tracker) en arrière-plan
-echo "🟢 Lancement du consommateur (tracker) en arrière-plan..."
+# Ã‰tape 5: Lancement du consommateur (tracker) en arriÃ¨re-plan
+echo "ðŸŸ¢ Lancement du consommateur (tracker) en arriÃ¨re-plan..."
 ./bin/tracker > logs/tracker_stdout.log 2>&1 &
 echo $! > "$script_dir/tracker.pid"
 
-# Étape 6: Lancement du producteur (producer) en arrière-plan
-echo "🟢 Lancement du producteur (producer) en arrière-plan..."
+# Ã‰tape 6: Lancement du producteur (producer) en arriÃ¨re-plan
+echo "ðŸŸ¢ Lancement du producteur (producer) en arriÃ¨re-plan..."
 ./bin/producer > logs/producer_stdout.log 2>&1 &
 echo $! > "$script_dir/producer.pid"
 
 echo ""
-echo "🎉 Environnement démarré avec succès !"
-echo "📊 Pour surveiller l'application, lancez :"
-echo "   ./bin/monitor"
+echo "ðŸŽ‰ Environnement dÃ©marrÃ© avec succÃ¨s !"
 echo ""
-echo "🛑 Pour arrêter l'environnement :"
-echo "   ./stop.sh"
+
+# Ã‰tape 7: Lancement du moniteur en avant-plan
+echo "ðŸ–¥ï¸  Lancement du moniteur TUI..."
+echo "   Appuyez sur 'q' ou Ctrl+C pour quitter et arrÃªter l'environnement."
+echo ""
+
+# Fonction de nettoyage appelÃ©e Ã  la sortie
+cleanup() {
+    echo ""
+    echo "ðŸ”„ ArrÃªt de l'environnement..."
+    "$script_dir/stop.sh"
+}
+
+# Configurer le trap pour capturer les signaux
+trap cleanup EXIT
+
+# Lancer le moniteur en avant-plan
+./bin/monitor
+
+# Note: cleanup() sera appelÃ© automatiquement via le trap EXIT

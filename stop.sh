@@ -1,55 +1,54 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 # ==============================================================================
-# SCRIPT D'ARRÊT PROPRE DE L'APPLICATION KAFKA DEMO
+# SCRIPT D'ARRÃŠT PROPRE DE L'APPLICATION KAFKA DEMO
 # ==============================================================================
 #
-# Ce script est conçu pour arrêter proprement tous les composants de l'application.
-# Il suit une approche en plusieurs étapes pour s'assurer que les données en
-# transit sont traitées avant l'arrêt complet.
+# Ce script est conÃ§u pour arrÃªter proprement tous les composants de l'application.
+# Il suit une approche en plusieurs Ã©tapes pour s'assurer que les donnÃ©es en
+# transit sont traitÃ©es avant l'arrÃªt complet.
 #
-# Étapes exécutées :
-# 1. Arrêt des processus Go :
-#    a. Envoi d'un signal SIGTERM : Ce signal demande aux processus Go de
-#       s'arrêter proprement. Le producteur videra son tampon et le
-#       consommateur terminera de traiter le message en cours.
-#    b. Période de grâce : Le script attend jusqu'à 15 secondes pour laisser
-#       le temps aux applications de se terminer d'elles-mêmes.
-#    c. Arrêt forcé (si nécessaire) : Si les processus sont toujours actifs
-#       après le délai, un signal SIGKILL est envoyé pour les forcer à
-#       s'arrêter. C'est une mesure de sécurité.
-# 2. Arrêt des conteneurs Docker : Une fois les applications Go terminées,
-#    `docker compose down` est appelé pour arrêter et supprimer les conteneurs
-#    Kafka.
+# Ã‰tapes exÃ©cutÃ©es :
+# 1. ArrÃªt des processus Go :
+#    a. ArrÃªt du moniteur TUI (s'il est en cours d'exÃ©cution)
+#    b. ArrÃªt du producteur (envoi signal SIGTERM)
+#    c. ArrÃªt du tracker (consommateur) aprÃ¨s le producteur
+#    d. PÃ©riode de grÃ¢ce de 15 secondes pour un arrÃªt propre
+#    e. ArrÃªt forcÃ© (SIGKILL) si nÃ©cessaire
+# 2. Nettoyage de secours avec pkill
+# 3. ArrÃªt des conteneurs Docker
+#
+# Note: Ce script est appelÃ© automatiquement par start.sh lorsque le moniteur
+#       se termine (sortie via 'q' ou Ctrl+C).
 #
 # ------------------------------------------------------------------------------
 
 # Active le mode "verbose" pour afficher chaque commande.
 set -x
 
-# Obtenir le répertoire du script
+# Obtenir le rÃ©pertoire du script
 script_dir=$(dirname "$0")
 
-# Fonction pour arrêter un processus proprement par son PID
-# Prend en paramètre le nom du service et son PID
+# Fonction pour arrÃªter un processus proprement par son PID
+# Prend en paramÃ¨tre le nom du service et son PID
 shutdown_process() {
     local service_name=$1
     local pid=$2
 
     if ! kill -0 $pid 2>/dev/null; then
-        echo "   ℹ️  $service_name (PID: $pid) est déjà arrêté."
+        echo "   â„¹ï¸  $service_name (PID: $pid) est dÃ©jÃ  arrÃªtÃ©."
         return 0
     fi
 
-    echo "   -> Arrêt de $service_name (PID: $pid)..."
-    # Envoi du signal SIGTERM pour un arrêt gracieux
+    echo "   -> ArrÃªt de $service_name (PID: $pid)..."
+    # Envoi du signal SIGTERM pour un arrÃªt gracieux
     kill -TERM $pid 2>/dev/null || true
 
-    # Période de grâce de 15 secondes
+    # PÃ©riode de grÃ¢ce de 15 secondes
     local waited=0
     while [ $waited -lt 15 ]; do
         if ! kill -0 $pid 2>/dev/null; then
-            echo "   ✅ $service_name s'est arrêté proprement."
+            echo "   âœ… $service_name s'est arrÃªtÃ© proprement."
             return 0
         fi
         sleep 1
@@ -58,17 +57,22 @@ shutdown_process() {
     done
     echo ""
 
-    # Si le processus est toujours là, on force l'arrêt
-    echo "   ⚠️  $service_name ne s'est pas arrêté à temps. Arrêt forcé (SIGKILL)..."
+    # Si le processus est toujours lÃ , on force l'arrÃªt
+    echo "   âš ï¸  $service_name ne s'est pas arrÃªtÃ© Ã  temps. ArrÃªt forcÃ© (SIGKILL)..."
     kill -KILL $pid 2>/dev/null || true
     return 1
 }
 
-# Étape 1: Arrêter proprement les processus Go (producer PUIS tracker)
-echo "🔴 Arrêt séquentiel des processus applicatifs Go..."
+# Ã‰tape 1: ArrÃªter proprement les processus Go (monitor, producer PUIS tracker)
+echo "ðŸ”´ ArrÃªt sÃ©quentiel des processus applicatifs Go..."
 
+monitor_pid=""
 producer_pid=""
 tracker_pid=""
+
+if [ -f "$script_dir/monitor.pid" ]; then
+    monitor_pid=$(cat "$script_dir/monitor.pid")
+fi
 
 if [ -f "$script_dir/producer.pid" ]; then
     producer_pid=$(cat "$script_dir/producer.pid")
@@ -78,31 +82,40 @@ if [ -f "$script_dir/tracker.pid" ]; then
     tracker_pid=$(cat "$script_dir/tracker.pid")
 fi
 
-# 1. Arrêter le producer d'abord pour stopper l'envoi de nouveaux messages
+# 1. ArrÃªter le moniteur d'abord (si lancÃ© sÃ©parÃ©ment)
+if [ -n "$monitor_pid" ]; then
+    echo "   1. ArrÃªt du moniteur..."
+    shutdown_process "Monitor" $monitor_pid
+    rm -f "$script_dir/monitor.pid"
+fi
+
+# 2. ArrÃªter le producer pour stopper l'envoi de nouveaux messages
 if [ -n "$producer_pid" ]; then
-    echo "   1. Arrêt du producer..."
+    echo "   2. ArrÃªt du producer..."
     shutdown_process "Producer" $producer_pid
     rm -f "$script_dir/producer.pid"
 fi
 
-# 2. Ensuite, arrêter le tracker pour qu'il traite les messages restants
+# 3. Ensuite, arrÃªter le tracker pour qu'il traite les messages restants
 if [ -n "$tracker_pid" ]; then
-    echo "   2. Arrêt du tracker..."
+    echo "   3. ArrÃªt du tracker..."
     shutdown_process "Tracker" $tracker_pid
     rm -f "$script_dir/tracker.pid"
 fi
 
-# Nettoyage de secours (si les PID files étaient absents ou incorrects)
-echo "   🧹 Nettoyage de sécurité (pkill)..."
+# Nettoyage de secours (si les PID files Ã©taient absents ou incorrects)
+echo "   ðŸ§¹ Nettoyage de sÃ©curitÃ© (pkill)..."
+pkill -TERM -f "./bin/monitor" 2>/dev/null || true
 pkill -TERM -f "./bin/producer" 2>/dev/null || true
 pkill -TERM -f "./bin/tracker" 2>/dev/null || true
 sleep 2
+pkill -KILL -f "./bin/monitor" 2>/dev/null || true
 pkill -KILL -f "./bin/producer" 2>/dev/null || true
 pkill -KILL -f "./bin/tracker" 2>/dev/null || true
 
 
-# Étape 2: Arrêter et supprimer les conteneurs Docker
-echo "🔴 Arrêt et suppression des conteneurs Docker..."
+# Ã‰tape 2: ArrÃªter et supprimer les conteneurs Docker
+echo "ðŸ”´ ArrÃªt et suppression des conteneurs Docker..."
 sudo docker compose down
 
-echo "✅ L'environnement a été complètement arrêté."
+echo "âœ… L'environnement a Ã©tÃ© complÃ¨tement arrÃªtÃ©."
