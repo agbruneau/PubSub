@@ -140,6 +140,10 @@ func (p *OrderProducer) GenerateOrder(template OrderTemplate, sequence int) mode
 	tax := itemTotal * p.config.TaxRate
 	total := itemTotal + tax + p.config.ShippingFee
 
+	const initialStock = 100
+	availableQty := initialStock - template.Quantity
+	inStock := availableQty >= 0
+
 	return models.Order{
 		OrderID:  uuid.New().String(),
 		Sequence: sequence,
@@ -178,10 +182,10 @@ func (p *OrderProducer) GenerateOrder(template OrderTemplate, sequence int) mode
 		Inventory: models.InventoryStatus{
 			ItemID:       fmt.Sprintf("item-%s", template.Item),
 			ItemName:     template.Item,
-			AvailableQty: 100 - template.Quantity,
+			AvailableQty: availableQty,
 			ReservedQty:  template.Quantity,
 			UnitPrice:    template.Price,
-			InStock:      true,
+			InStock:      inStock,
 			Warehouse:    p.config.Warehouse,
 		},
 	}
