@@ -222,6 +222,18 @@ func (t *Tracker) isRunning() bool {
 func (t *Tracker) handleKafkaError(err error, consecutiveErrors *int) bool {
 	kafkaErr, ok := err.(kafka.Error)
 	if !ok {
+		// Erreur générique (non-Kafka)
+		// On la traite comme une erreur pour éviter une boucle active silencieuse
+		t.logLogger.LogError("Erreur inattendue du consommateur", err, nil)
+		*consecutiveErrors++
+		if *consecutiveErrors >= t.config.MaxErrors {
+			t.logLogger.LogError("Trop d'erreurs consécutives (génériques), arrêt du consommateur", err, map[string]interface{}{
+				"consecutive_errors": *consecutiveErrors,
+			})
+			return true
+		}
+		// Petite pause pour éviter de spammer les logs en cas de boucle rapide d'erreurs génériques
+		time.Sleep(100 * time.Millisecond)
 		return false
 	}
 
