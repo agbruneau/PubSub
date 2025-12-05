@@ -60,7 +60,7 @@ func TestTrackerRunErrorHandling(t *testing.T) {
 	tracker := newTestTracker(&eventBuf, &logBuf)
 	mockConsumer := new(MockKafkaConsumer)
 	tracker.consumer = mockConsumer
-	tracker.config.MaxErrors = 2
+	tracker.config.MaxErrors = 3
 
 	// Erreur non fatale
 	errNonFatal := errors.New("temporary error")

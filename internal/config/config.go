@@ -21,9 +21,9 @@ const (
 // Log Files
 const (
 	// TrackerLogFile is the name of the structured log file.
-	TrackerLogFile = "tracker.log"
+	TrackerLogFile = "logs/tracker.log"
 	// TrackerEventsFile is the name of the event audit file.
-	TrackerEventsFile = "tracker.events"
+	TrackerEventsFile = "logs/tracker.events"
 )
 
 // Common timeouts and intervals

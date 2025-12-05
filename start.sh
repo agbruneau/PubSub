@@ -19,14 +19,12 @@
 # 4. Installation des dépendances Go : Exécute `go mod download` pour
 #    télécharger les bibliothèques nécessaires (client Kafka, UUID).
 # 5. Lancement du consommateur (`tracker`) : Démarre le consommateur en
-#    arrière-plan. Il commencera immédiatement à écouter les messages
-#    sur le topic 'orders'.
-# 6. Lancement du producteur (`producer`) : Démarre le producteur au
-#    premier plan. Il commencera à générer et envoyer des messages.
-#    Le script se terminera lorsque le producteur sera arrêté (Ctrl+C).
+#    arrière-plan.
+# 6. Lancement du producteur (`producer`) : Démarre le producteur en
+#    arrière-plan.
 #
-# Note : Le moniteur de logs (`monitor`) doit être lancé manuellement
-#        dans un terminal séparé avec la commande : ./bin/monitor
+# Note : Une fois ce script terminé, lancez le moniteur dans ce même terminal
+#        ou un autre avec : ./bin/monitor
 #
 # ------------------------------------------------------------------------------
 
@@ -43,6 +41,10 @@ set -o pipefail
 # Obtenir le répertoire du script
 script_dir=$(dirname "$0")
 
+# Création du dossier de logs
+echo "📂 Création du dossier de logs..."
+mkdir -p logs
+
 # Étape 1: Démarrage des conteneurs Docker
 echo "🚀 Démarrage des conteneurs Docker (Kafka)..."
 sudo docker compose up -d
@@ -51,9 +53,12 @@ sudo docker compose up -d
 echo "⏳ Attente de la disponibilité du broker Kafka..."
 max_attempts=30
 attempt=0
+kafka_ready=false
+
 while [ $attempt -lt $max_attempts ]; do
   if sudo docker exec kafka kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1; then
     echo "✅ Kafka est prêt !"
+    kafka_ready=true
     break
   fi
   attempt=$((attempt + 1))
@@ -61,7 +66,7 @@ while [ $attempt -lt $max_attempts ]; do
   sleep 2
 done
 
-if [ $attempt -eq $max_attempts ]; then
+if [ "$kafka_ready" = false ]; then
   echo "❌ Erreur : Kafka n'a pas pu démarrer dans le délai imparti"
   exit 1
 fi
@@ -89,18 +94,19 @@ go build -tags kafka -o bin/tracker ./cmd/tracker
 go build -o bin/monitor ./cmd/monitor
 
 # Étape 5: Lancement du consommateur (tracker) en arrière-plan
-# Le `&` à la fin de la commande le fait tourner en tâche de fond.
-# Les logs du tracker seront visibles dans les fichiers tracker.log et tracker.events.
 echo "🟢 Lancement du consommateur (tracker) en arrière-plan..."
-./bin/tracker &
+./bin/tracker > logs/tracker_stdout.log 2>&1 &
 echo $! > "$script_dir/tracker.pid"
 
-# Étape 6: Lancement du producteur (producer) au premier plan
-# Le script attendra ici jusqu'à ce que le producteur soit manuellement arrêté.
-echo "🟢 Lancement du producteur (producer) au premier plan..."
-./bin/producer &
-producer_pid=$!
-echo $producer_pid > "$script_dir/producer.pid"
+# Étape 6: Lancement du producteur (producer) en arrière-plan
+echo "🟢 Lancement du producteur (producer) en arrière-plan..."
+./bin/producer > logs/producer_stdout.log 2>&1 &
+echo $! > "$script_dir/producer.pid"
 
-# Attendre que le producteur se termine (par exemple, via Ctrl+C)
-wait $producer_pid
+echo ""
+echo "🎉 Environnement démarré avec succès !"
+echo "📊 Pour surveiller l'application, lancez :"
+echo "   ./bin/monitor"
+echo ""
+echo "🛑 Pour arrêter l'environnement :"
+echo "   ./stop.sh"

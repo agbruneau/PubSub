@@ -359,20 +359,20 @@ func evaluateStatus(value float64, thresholds []StatusThreshold) (HealthStatus, 
 		last := thresholds[len(thresholds)-1]
 		return last.Status, last.Text, last.Color
 	}
-	return HealthCritical, "● UNKNOWN", ui.ColorRed
+	return HealthCritical, "● INCONNU", ui.ColorRed
 }
 
 var (
 	healthThresholds = []StatusThreshold{
 		{SuccessRateExcellent, HealthGood, "● EXCELLENT", ui.ColorGreen},
-		{SuccessRateGood, HealthWarning, "● GOOD", ui.ColorYellow},
-		{0, HealthCritical, "● CRITICAL", ui.ColorRed},
+		{SuccessRateGood, HealthWarning, "● BON", ui.ColorYellow},
+		{0, HealthCritical, "● CRITIQUE", ui.ColorRed},
 	}
 
 	throughputThresholds = []StatusThreshold{
 		{ThroughputNormal, HealthGood, "● NORMAL", ui.ColorGreen},
-		{ThroughputLow, HealthWarning, "● LOW", ui.ColorYellow},
-		{0, HealthCritical, "● STOPPED", ui.ColorRed},
+		{ThroughputLow, HealthWarning, "● FAIBLE", ui.ColorYellow},
+		{0, HealthCritical, "● ARRÊTÉ", ui.ColorRed},
 	}
 )
 
@@ -414,16 +414,16 @@ func GetThroughputStatus(mps float64) (HealthStatus, string, ui.Color) {
 //   - ui.Color: The status color.
 func GetErrorStatus(errorCount int64, lastErrorTime time.Time) (HealthStatus, string, ui.Color) {
 	if errorCount == 0 {
-		return HealthGood, "● NONE", ui.ColorGreen
+		return HealthGood, "● AUCUN", ui.ColorGreen
 	}
 
 	timeSinceError := time.Since(lastErrorTime)
 	if timeSinceError > ErrorTimeoutWarning {
-		return HealthGood, "● NONE", ui.ColorGreen
+		return HealthGood, "● AUCUN", ui.ColorGreen
 	} else if timeSinceError > ErrorTimeoutCritical {
-		return HealthWarning, "● RECENT", ui.ColorYellow
+		return HealthWarning, "● RÉCENT", ui.ColorYellow
 	}
-	return HealthCritical, "● ACTIVE", ui.ColorRed
+	return HealthCritical, "● ACTIF", ui.ColorRed
 }
 
 // CalculateQualityScore calculates a global quality score (0-100).
@@ -472,13 +472,13 @@ func CalculateQualityScore(successRate, mps float64, errorCount int64, uptime ti
 func CreateMetricsTable() *widgets.Table {
 	table := widgets.NewTable()
 	table.Rows = [][]string{
-		{"Metric", "Value"},
-		{"Messages received", "0"},
-		{"Messages processed", "0"},
-		{"Messages failed", "0"},
-		{"Throughput (msg/s)", "0.00"},
-		{"Success rate", "0.00%"},
-		{"Last update", "-"},
+		{"Métrique", "Valeur"},
+		{"Messages reçus", "0"},
+		{"Messages traités", "0"},
+		{"Messages échoués", "0"},
+		{"Débit (msg/s)", "0.00"},
+		{"Taux de succès", "0.00%"},
+		{"Dernière màj", "-"},
 	}
 	table.TextStyle = ui.NewStyle(ui.ColorWhite)
 	table.RowStyles[0] = ui.NewStyle(ui.ColorYellow, ui.ColorClear, ui.ModifierBold)
@@ -494,13 +494,13 @@ func CreateMetricsTable() *widgets.Table {
 func CreateHealthDashboard() *widgets.Table {
 	table := widgets.NewTable()
 	table.Rows = [][]string{
-		{"Indicator", "Status"},
-		{"Global Health", "●"},
-		{"Success Rate", "●"},
-		{"Throughput", "●"},
-		{"Errors", "●"},
+		{"Indicateur", "Statut"},
+		{"Santé Globale", "●"},
+		{"Taux Succès", "●"},
+		{"Débit", "●"},
+		{"Erreurs", "●"},
 		{"Uptime", "-"},
-		{"Quality", "-"},
+		{"Qualité", "-"},
 	}
 	table.TextStyle = ui.NewStyle(ui.ColorWhite)
 	table.RowStyles[0] = ui.NewStyle(ui.ColorYellow, ui.ColorClear, ui.ModifierBold)
@@ -515,8 +515,8 @@ func CreateHealthDashboard() *widgets.Table {
 //   - *widgets.List: The initialized list widget.
 func CreateLogList() *widgets.List {
 	list := widgets.NewList()
-	list.Title = "Recent Logs (tracker.log)"
-	list.Rows = []string{"Waiting for logs..."}
+	list.Title = "Logs Récents (tracker.log)"
+	list.Rows = []string{"En attente de logs..."}
 	list.TextStyle = ui.NewStyle(ui.ColorWhite)
 	list.SelectedRowStyle = ui.NewStyle(ui.ColorBlack, ui.ColorWhite)
 	list.WrapText = true
@@ -530,8 +530,8 @@ func CreateLogList() *widgets.List {
 //   - *widgets.List: The initialized list widget.
 func CreateEventList() *widgets.List {
 	list := widgets.NewList()
-	list.Title = "Recent Events (tracker.events)"
-	list.Rows = []string{"Waiting for events..."}
+	list.Title = "Événements Récents (tracker.events)"
+	list.Rows = []string{"En attente d'événements..."}
 	list.TextStyle = ui.NewStyle(ui.ColorWhite)
 	list.SelectedRowStyle = ui.NewStyle(ui.ColorBlack, ui.ColorWhite)
 	list.WrapText = true
@@ -545,7 +545,7 @@ func CreateEventList() *widgets.List {
 //   - *widgets.Plot: The initialized plot widget.
 func CreateMessagesPerSecondChart() *widgets.Plot {
 	plot := widgets.NewPlot()
-	plot.Title = "Message Throughput (msg/s)"
+	plot.Title = "Débit Messages (msg/s)"
 	plot.Data = [][]float64{{}}
 	plot.SetRect(0, 19, 80, 29)
 	plot.AxesColor = ui.ColorWhite
@@ -560,7 +560,7 @@ func CreateMessagesPerSecondChart() *widgets.Plot {
 //   - *widgets.Plot: The initialized plot widget.
 func CreateSuccessRateChart() *widgets.Plot {
 	plot := widgets.NewPlot()
-	plot.Title = "Success Rate (%)"
+	plot.Title = "Taux de Succès (%)"
 	plot.Data = [][]float64{{}}
 	plot.SetRect(80, 19, 160, 29)
 	plot.AxesColor = ui.ColorWhite
@@ -576,13 +576,13 @@ func CreateSuccessRateChart() *widgets.Plot {
 //   - m: The current metrics.
 func UpdateMetricsTable(table *widgets.Table, m *Metrics) {
 	table.Rows = [][]string{
-		{"Metric", "Value"},
-		{"Messages received", fmt.Sprintf("%d", m.MessagesReceived)},
-		{"Messages processed", fmt.Sprintf("%d", m.MessagesProcessed)},
-		{"Messages failed", fmt.Sprintf("%d", m.MessagesFailed)},
-		{"Throughput (msg/s)", fmt.Sprintf("%.2f", m.CurrentMessagesPerSec)},
-		{"Success rate", fmt.Sprintf("%.2f%%", m.CurrentSuccessRate)},
-		{"Last update", m.LastUpdateTime.Format("15:04:05")},
+		{"Métrique", "Valeur"},
+		{"Messages reçus", fmt.Sprintf("%d", m.MessagesReceived)},
+		{"Messages traités", fmt.Sprintf("%d", m.MessagesProcessed)},
+		{"Messages échoués", fmt.Sprintf("%d", m.MessagesFailed)},
+		{"Débit (msg/s)", fmt.Sprintf("%.2f", m.CurrentMessagesPerSec)},
+		{"Taux de succès", fmt.Sprintf("%.2f%%", m.CurrentSuccessRate)},
+		{"Dernière màj", m.LastUpdateTime.Format("15:04:05")},
 	}
 }
 
@@ -608,11 +608,11 @@ func getGlobalHealthStatus(successStatus, throughputStatus, errorStatus HealthSt
 
 	switch globalStatus {
 	case HealthWarning:
-		return globalStatus, "● WARNING", ui.ColorYellow
+		return globalStatus, "● ATTENTION", ui.ColorYellow
 	case HealthCritical:
-		return globalStatus, "● CRITICAL", ui.ColorRed
+		return globalStatus, "● CRITIQUE", ui.ColorRed
 	default:
-		return HealthGood, "● EXCELLENT", ui.ColorGreen
+		return globalStatus, "● EXCELLENT", ui.ColorGreen
 	}
 }
 
@@ -628,11 +628,11 @@ func getQualityText(qualityScore float64) (string, ui.Color) {
 	if qualityScore >= QualityScoreExcellent {
 		return fmt.Sprintf("EXCELLENT (%.0f)", qualityScore), ui.ColorGreen
 	} else if qualityScore >= QualityScoreGood {
-		return fmt.Sprintf("GOOD (%.0f)", qualityScore), ui.ColorYellow
+		return fmt.Sprintf("BON (%.0f)", qualityScore), ui.ColorYellow
 	} else if qualityScore >= QualityScoreMedium {
-		return fmt.Sprintf("MEDIUM (%.0f)", qualityScore), ui.ColorYellow
+		return fmt.Sprintf("MOYEN (%.0f)", qualityScore), ui.ColorYellow
 	}
-	return fmt.Sprintf("LOW (%.0f)", qualityScore), ui.ColorRed
+	return fmt.Sprintf("FAIBLE (%.0f)", qualityScore), ui.ColorRed
 }
 
 // formatUptime formats the uptime duration into a readable string.
@@ -668,13 +668,13 @@ func UpdateHealthDashboard(dashboard *widgets.Table, m *Metrics) {
 	uptimeStr := formatUptime(m.Uptime)
 
 	dashboard.Rows = [][]string{
-		{"Indicator", "Status"},
-		{"Global Health", globalText},
-		{"Success Rate", successText},
-		{"Throughput", throughputText},
-		{"Errors", errorText},
+		{"Indicateur", "Statut"},
+		{"Santé Globale", globalText},
+		{"Taux Succès", successText},
+		{"Débit", throughputText},
+		{"Erreurs", errorText},
 		{"Uptime", uptimeStr},
-		{"Quality", qualityText},
+		{"Qualité", qualityText},
 	}
 
 	dashboard.RowStyles = make(map[int]ui.Style)
@@ -723,7 +723,7 @@ func UpdateLogList(list *widgets.List, logs []models.LogEntry) {
 		rows = append(rows, formatLogRow(logs[i]))
 	}
 	if len(rows) == 0 {
-		rows = []string{"Waiting for logs..."}
+		rows = []string{"En attente de logs..."}
 	}
 	list.Rows = rows
 }
@@ -764,7 +764,7 @@ func UpdateEventList(list *widgets.List, events []models.EventEntry) {
 		rows = append(rows, formatEventRow(events[i]))
 	}
 	if len(rows) == 0 {
-		rows = []string{"Waiting for events..."}
+		rows = []string{"En attente d'événements..."}
 	}
 	list.Rows = rows
 }
