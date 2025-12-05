@@ -1,8 +1,8 @@
 /*
-Package producer fournit le producteur de messages Kafka pour le système PubSub.
+Package producer provides the Kafka message producer for the PubSub system.
 
-Ce paquet implémente la logique de génération de commandes et de publication Kafka,
-suivant le modèle de transfert d'état porté par événement (ECST).
+This package implements the logic for generating orders and publishing to Kafka,
+following the Event-Carried State Transfer (ECST) pattern.
 */
 package producer
 
@@ -18,25 +18,25 @@ import (
 	"github.com/google/uuid"
 )
 
-// Config contient la configuration du service producteur.
-// Elle peut être chargée à partir de variables d'environnement.
+// Config contains the producer service configuration.
+// It can be loaded from environment variables.
 type Config struct {
-	KafkaBroker     string        // Adresse du broker Kafka.
-	Topic           string        // Sujet Kafka pour la publication.
-	MessageInterval time.Duration // Intervalle entre les messages.
-	FlushTimeout    int           // Délai en ms pour le flush final.
-	TaxRate         float64       // Taux de taxe à appliquer.
-	ShippingFee     float64       // Frais de port.
-	Currency        string        // Devise par défaut.
-	PaymentMethod   string        // Méthode de paiement par défaut.
-	Warehouse       string        // Entrepôt par défaut.
+	KafkaBroker     string        // Kafka broker address.
+	Topic           string        // Kafka topic for publication.
+	MessageInterval time.Duration // Interval between messages.
+	FlushTimeout    int           // Timeout in ms for final flush.
+	TaxRate         float64       // Tax rate to apply.
+	ShippingFee     float64       // Shipping fee.
+	Currency        string        // Default currency.
+	PaymentMethod   string        // Default payment method.
+	Warehouse       string        // Default warehouse.
 }
 
-// NewConfig crée une configuration avec des valeurs par défaut,
-// surchargées par les variables d'environnement si elles sont définies.
+// NewConfig creates a configuration with default values,
+// overridden by environment variables if defined.
 //
-// Retourne:
-//   - *Config: La configuration initialisée.
+// Returns:
+//   - *Config: The initialized configuration.
 func NewConfig() *Config {
 	cfg := &Config{
 		KafkaBroker:     config.DefaultKafkaBroker,
@@ -50,7 +50,7 @@ func NewConfig() *Config {
 		Warehouse:       config.ProducerDefaultWarehouse,
 	}
 
-	// Surcharger depuis les variables d'environnement
+	// Override from environment variables
 	if broker := os.Getenv("KAFKA_BROKER"); broker != "" {
 		cfg.KafkaBroker = broker
 	}
@@ -61,15 +61,15 @@ func NewConfig() *Config {
 	return cfg
 }
 
-// OrderTemplate définit un modèle pour générer des commandes de test.
+// OrderTemplate defines a template for generating test orders.
 type OrderTemplate struct {
-	User     string  // Identifiant du client.
-	Item     string  // Nom de l'article.
-	Quantity int     // Quantité commandée.
-	Price    float64 // Prix unitaire.
+	User     string  // Customer identifier.
+	Item     string  // Item name.
+	Quantity int     // Ordered quantity.
+	Price    float64 // Unit price.
 }
 
-// DefaultOrderTemplates contient les modèles de commandes par défaut.
+// DefaultOrderTemplates contains default order templates.
 var DefaultOrderTemplates = []OrderTemplate{
 	{User: "client01", Item: "espresso", Quantity: 2, Price: 2.50},
 	{User: "client02", Item: "cappuccino", Quantity: 3, Price: 3.20},
@@ -80,28 +80,28 @@ var DefaultOrderTemplates = []OrderTemplate{
 	{User: "client07", Item: "americano", Quantity: 8, Price: 2.80},
 	{User: "client08", Item: "chai latte", Quantity: 9, Price: 3.80},
 	{User: "client09", Item: "matcha", Quantity: 10, Price: 4.50},
-	{User: "client10", Item: "smoothie fraise", Quantity: 11, Price: 5.50},
+	{User: "client10", Item: "strawberry smoothie", Quantity: 11, Price: 5.50},
 }
 
-// OrderProducer est le service principal qui gère la production de messages Kafka.
-// Il encapsule le producteur Kafka, la configuration et les modèles de commandes.
+// OrderProducer is the main service handling Kafka message production.
+// It encapsulates the Kafka producer, configuration, and order templates.
 type OrderProducer struct {
-	config       *Config         // Configuration du producteur.
-	producer     KafkaProducer   // Interface pour la testabilité.
-	rawProducer  *kafka.Producer // Garder une référence pour les rapports de livraison.
+	config       *Config         // Producer configuration.
+	producer     KafkaProducer   // Interface for testability.
+	rawProducer  *kafka.Producer // Keep a reference for delivery reports.
 	deliveryChan chan kafka.Event
-	templates    []OrderTemplate // Modèles de commandes à utiliser.
-	sequence     int             // Séquenceur interne pour les ID.
-	running      bool            // État de fonctionnement.
+	templates    []OrderTemplate // Order templates to use.
+	sequence     int             // Internal sequencer for IDs.
+	running      bool            // Running state.
 }
 
-// New crée une nouvelle instance du service OrderProducer.
+// New creates a new instance of the OrderProducer service.
 //
-// Paramètres:
-//   - cfg: La configuration du producteur.
+// Parameters:
+//   - cfg: The producer configuration.
 //
-// Retourne:
-//   - *OrderProducer: L'instance créée.
+// Returns:
+//   - *OrderProducer: The created instance.
 func New(cfg *Config) *OrderProducer {
 	return &OrderProducer{
 		config:    cfg,
@@ -110,18 +110,18 @@ func New(cfg *Config) *OrderProducer {
 	}
 }
 
-// Initialize initialise le producteur Kafka.
-// Crée la connexion au broker et démarre le gestionnaire de rapports.
+// Initialize initializes the Kafka producer.
+// Creates the connection to the broker and starts the report handler.
 //
-// Retourne:
-//   - error: Une erreur si la connexion échoue.
+// Returns:
+//   - error: An error if connection fails.
 func (p *OrderProducer) Initialize() error {
 	var err error
 	p.rawProducer, err = kafka.NewProducer(&kafka.ConfigMap{
 		"bootstrap.servers": p.config.KafkaBroker,
 	})
 	if err != nil {
-		return fmt.Errorf("impossible de créer le producteur Kafka: %w", err)
+		return fmt.Errorf("failed to create Kafka producer: %w", err)
 	}
 	p.producer = newKafkaProducerWrapper(p.rawProducer)
 
@@ -131,15 +131,15 @@ func (p *OrderProducer) Initialize() error {
 	return nil
 }
 
-// handleDeliveryReports traite les rapports de livraison dans une goroutine dédiée.
-// Affiche le succès ou l'échec de chaque message produit.
+// handleDeliveryReports processes delivery reports in a dedicated goroutine.
+// Logs success or failure for each produced message.
 func (p *OrderProducer) handleDeliveryReports() {
 	for e := range p.deliveryChan {
 		m := e.(*kafka.Message)
 		if m.TopicPartition.Error != nil {
-			fmt.Printf("❌ Échec de la livraison du message: %v\n", m.TopicPartition.Error)
+			fmt.Printf("❌ Message delivery failed: %v\n", m.TopicPartition.Error)
 		} else {
-			fmt.Printf("✅ Message livré au sujet %s (partition %d) à l'offset %d\n",
+			fmt.Printf("✅ Message delivered to topic %s (partition %d) at offset %d\n",
 				*m.TopicPartition.Topic,
 				m.TopicPartition.Partition,
 				m.TopicPartition.Offset)
@@ -147,16 +147,16 @@ func (p *OrderProducer) handleDeliveryReports() {
 	}
 }
 
-// GenerateOrder crée une commande enrichie à partir d'un modèle et d'un numéro de séquence.
+// GenerateOrder creates an enriched order from a template and a sequence number.
 //
-// Paramètres:
-//   - template: Le modèle de commande à utiliser.
-//   - sequence: Le numéro de séquence unique.
+// Parameters:
+//   - template: The order template to use.
+//   - sequence: The unique sequence number.
 //
-// Retourne:
-//   - models.Order: La commande complète générée.
+// Returns:
+//   - models.Order: The complete generated order.
 func (p *OrderProducer) GenerateOrder(template OrderTemplate, sequence int) models.Order {
-	// Calculs financiers
+	// Financial calculations
 	itemTotal := float64(template.Quantity) * template.Price
 	tax := itemTotal * p.config.TaxRate
 	total := itemTotal + tax + p.config.ShippingFee
@@ -184,7 +184,7 @@ func (p *OrderProducer) GenerateOrder(template OrderTemplate, sequence int) mode
 		Total:         total,
 		Currency:      p.config.Currency,
 		PaymentMethod: p.config.PaymentMethod,
-		DeliveryNotes: fmt.Sprintf("Livrer au %d Rue de la Paix, 75000 Paris", sequence),
+		DeliveryNotes: fmt.Sprintf("Deliver to %d Rue de la Paix, 75000 Paris", sequence),
 		Metadata: models.OrderMetadata{
 			Timestamp:     time.Now().UTC().Format(time.RFC3339),
 			Version:       "1.1",
@@ -212,18 +212,18 @@ func (p *OrderProducer) GenerateOrder(template OrderTemplate, sequence int) mode
 	}
 }
 
-// ProduceOrder génère et envoie une commande au sujet Kafka.
-// Sélectionne un modèle de commande de manière cyclique.
+// ProduceOrder generates and sends an order to the Kafka topic.
+// Selects an order template in a round-robin fashion.
 //
-// Retourne:
-//   - error: Une erreur si la production échoue.
+// Returns:
+//   - error: An error if production fails.
 func (p *OrderProducer) ProduceOrder() error {
 	template := p.templates[p.sequence%len(p.templates)]
 	order := p.GenerateOrder(template, p.sequence)
 
 	value, err := json.Marshal(order)
 	if err != nil {
-		return fmt.Errorf("erreur de sérialisation JSON: %w", err)
+		return fmt.Errorf("JSON marshaling error: %w", err)
 	}
 
 	topic := p.config.Topic
@@ -233,43 +233,43 @@ func (p *OrderProducer) ProduceOrder() error {
 	}, p.deliveryChan)
 
 	if err != nil {
-		return fmt.Errorf("erreur lors de la production du message: %w", err)
+		return fmt.Errorf("error producing message: %w", err)
 	}
 
 	p.sequence++
 	return nil
 }
 
-// Run démarre la boucle de production de messages.
-// Continue jusqu'à ce qu'un signal d'arrêt soit reçu sur stopChan.
+// Run starts the message production loop.
+// Continues until a stop signal is received on stopChan.
 //
-// Paramètres:
-//   - stopChan: Le canal de signal d'arrêt.
+// Parameters:
+//   - stopChan: The stop signal channel.
 func (p *OrderProducer) Run(stopChan <-chan os.Signal) {
 	p.running = true
 	for p.running {
 		select {
 		case <-stopChan:
-			fmt.Println("\n⚠️  Signal d'arrêt reçu. Arrêt de la production de nouveaux messages...")
+			fmt.Println("\n⚠️  Stop signal received. Stopping new message production...")
 			p.running = false
 		default:
 			if err := p.ProduceOrder(); err != nil {
-				fmt.Printf("Erreur: %v\n", err)
+				fmt.Printf("Error: %v\n", err)
 			}
 			time.Sleep(p.config.MessageInterval)
 		}
 	}
 }
 
-// Close ferme proprement le producteur et envoie les messages en attente.
-// Cette méthode bloque jusqu'à ce que les messages soient vidés ou le timeout atteint.
+// Close gracefully closes the producer and flushes pending messages.
+// This method blocks until messages are flushed or timeout is reached.
 func (p *OrderProducer) Close() {
-	fmt.Println("⏳ Envoi des messages restants dans la file d'attente...")
+	fmt.Println("⏳ Sending remaining messages in queue...")
 	remainingMessages := p.producer.Flush(p.config.FlushTimeout)
 	if remainingMessages > 0 {
-		fmt.Printf("⚠️  %d messages n'ont pas pu être envoyés.\n", remainingMessages)
+		fmt.Printf("⚠️  %d messages could not be sent.\n", remainingMessages)
 	} else {
-		fmt.Println("✅ Tous les messages ont été envoyés avec succès.")
+		fmt.Println("✅ All messages sent successfully.")
 	}
 	p.rawProducer.Close()
 }

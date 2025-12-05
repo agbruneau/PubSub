@@ -1,9 +1,9 @@
 /*
-Package models définit les structures de données partagées pour le système PubSub.
+Package models defines shared data structures for the PubSub system.
 
-Ce paquet contient les types Order et associés utilisés pour le transfert d'état porté par événement (ECST).
-Chaque message de commande contient toutes les informations nécessaires au traitement, éliminant le besoin
-pour les consommateurs d'interroger des services externes.
+This package contains Order and associated types used for Event-Carried State Transfer (ECST).
+Each order message contains all information necessary for processing, eliminating the need
+for consumers to query external services.
 */
 package models
 
@@ -15,43 +15,43 @@ import (
 	"strings"
 )
 
-// Erreurs de validation
+// Validation errors
 var (
-	ErrEmptyOrderID        = errors.New("order_id est requis")
-	ErrInvalidSequence     = errors.New("la séquence doit être positive")
-	ErrEmptyStatus         = errors.New("le statut est requis")
-	ErrNoItems             = errors.New("la commande doit contenir au moins un article")
-	ErrInvalidCustomerID   = errors.New("customer_id est requis")
-	ErrInvalidCustomerName = errors.New("le nom du client est requis")
-	ErrInvalidEmail        = errors.New("format d'email invalide")
-	ErrInvalidItemID       = errors.New("item_id est requis")
-	ErrInvalidItemName     = errors.New("item_name est requis")
-	ErrInvalidQuantity     = errors.New("la quantité doit être positive")
-	ErrInvalidUnitPrice    = errors.New("le prix unitaire doit être positif")
-	ErrInvalidTotalPrice   = errors.New("total_price ne correspond pas à quantité * prix_unitaire")
-	ErrInvalidSubtotal     = errors.New("le sous-total ne correspond pas à la somme des articles")
-	ErrInvalidTax          = errors.New("la taxe doit être nulle ou positive")
-	ErrInvalidTotal        = errors.New("le total est incohérent avec sous-total + taxe + frais de port")
+	ErrEmptyOrderID        = errors.New("order_id is required")
+	ErrInvalidSequence     = errors.New("sequence must be positive")
+	ErrEmptyStatus         = errors.New("status is required")
+	ErrNoItems             = errors.New("order must contain at least one item")
+	ErrInvalidCustomerID   = errors.New("customer_id is required")
+	ErrInvalidCustomerName = errors.New("customer name is required")
+	ErrInvalidEmail        = errors.New("invalid email format")
+	ErrInvalidItemID       = errors.New("item_id is required")
+	ErrInvalidItemName     = errors.New("item_name is required")
+	ErrInvalidQuantity     = errors.New("quantity must be positive")
+	ErrInvalidUnitPrice    = errors.New("unit_price must be positive")
+	ErrInvalidTotalPrice   = errors.New("total_price does not match quantity * unit_price")
+	ErrInvalidSubtotal     = errors.New("subtotal does not match sum of items")
+	ErrInvalidTax          = errors.New("tax must be positive or zero")
+	ErrInvalidTotal        = errors.New("total is inconsistent with subtotal + tax + shipping fee")
 )
 
-// emailRegex valide le format de l'email
+// emailRegex verifies the email format
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 
-// CustomerInfo contient les informations détaillées sur le client.
-// Ces données sont intégrées dans chaque message de commande.
+// CustomerInfo contains detailed information about the customer.
+// These data are embedded in every order message.
 type CustomerInfo struct {
-	CustomerID   string `json:"customer_id"`   // Identifiant unique du client.
-	Name         string `json:"name"`          // Nom complet du client.
-	Email        string `json:"email"`         // Adresse email du client.
-	Phone        string `json:"phone"`         // Numéro de téléphone du client.
-	Address      string `json:"address"`       // Adresse physique du client.
-	LoyaltyLevel string `json:"loyalty_level"` // Niveau de fidélité (ex: "silver", "gold").
+	CustomerID   string `json:"customer_id"`   // Unique identifier of the customer.
+	Name         string `json:"name"`          // Full name of the customer.
+	Email        string `json:"email"`         // Email address of the customer.
+	Phone        string `json:"phone"`         // Phone number of the customer.
+	Address      string `json:"address"`       // Physical address of the customer.
+	LoyaltyLevel string `json:"loyalty_level"` // Loyalty level (e.g., "silver", "gold").
 }
 
-// Validate vérifie que les informations du client sont valides.
+// Validate checks that the customer information is valid.
 //
-// Retourne:
-//   - error: Une erreur si un champ requis est manquant ou invalide.
+// Returns:
+//   - error: An error if a required field is missing or invalid.
 func (c *CustomerInfo) Validate() error {
 	if strings.TrimSpace(c.CustomerID) == "" {
 		return ErrInvalidCustomerID
@@ -65,31 +65,31 @@ func (c *CustomerInfo) Validate() error {
 	return nil
 }
 
-// InventoryStatus représente l'état de l'inventaire pour un article spécifique au moment de la commande.
-// Cette information permet de comprendre le contexte du stock sans interroger un service d'inventaire.
+// InventoryStatus represents the inventory state for a specific item at the time of the order.
+// This information allows understanding the stock context without querying an inventory service.
 type InventoryStatus struct {
-	ItemID       string  `json:"item_id"`       // Identifiant de l'article en stock.
-	ItemName     string  `json:"item_name"`     // Nom de l'article.
-	AvailableQty int     `json:"available_qty"` // Quantité disponible avant la commande.
-	ReservedQty  int     `json:"reserved_qty"`  // Quantité réservée par cette commande.
-	UnitPrice    float64 `json:"unit_price"`    // Prix unitaire.
-	InStock      bool    `json:"in_stock"`      // Indicateur de disponibilité (vrai si stock > 0).
-	Warehouse    string  `json:"warehouse"`     // Entrepôt d'origine.
+	ItemID       string  `json:"item_id"`       // Identifier of the item in stock.
+	ItemName     string  `json:"item_name"`     // Name of the item.
+	AvailableQty int     `json:"available_qty"` // Quantity available before the order.
+	ReservedQty  int     `json:"reserved_qty"`  // Quantity reserved by this order.
+	UnitPrice    float64 `json:"unit_price"`    // Unit price.
+	InStock      bool    `json:"in_stock"`      // Availability indicator (true if stock > 0).
+	Warehouse    string  `json:"warehouse"`     // Origin warehouse.
 }
 
-// OrderItem représente un article individuel au sein d'une commande.
+// OrderItem represents an individual item within an order.
 type OrderItem struct {
-	ItemID     string  `json:"item_id"`     // Identifiant unique de l'article.
-	ItemName   string  `json:"item_name"`   // Nom de l'article.
-	Quantity   int     `json:"quantity"`    // Quantité commandée.
-	UnitPrice  float64 `json:"unit_price"`  // Prix unitaire.
-	TotalPrice float64 `json:"total_price"` // Prix total pour cet article (Quantité * Prix).
+	ItemID     string  `json:"item_id"`     // Unique identifier of the item.
+	ItemName   string  `json:"item_name"`   // Name of the item.
+	Quantity   int     `json:"quantity"`    // Ordered quantity.
+	UnitPrice  float64 `json:"unit_price"`  // Unit price.
+	TotalPrice float64 `json:"total_price"` // Total price for this item (Quantity * Price).
 }
 
-// Validate vérifie qu'un article de commande est valide.
+// Validate checks that an order item is valid.
 //
-// Retourne:
-//   - error: Une erreur si les données de l'article sont invalides ou incohérentes.
+// Returns:
+//   - error: An error if the item data is invalid or inconsistent.
 func (item *OrderItem) Validate() error {
 	if strings.TrimSpace(item.ItemID) == "" {
 		return ErrInvalidItemID
@@ -105,61 +105,61 @@ func (item *OrderItem) Validate() error {
 	}
 	expectedTotal := float64(item.Quantity) * item.UnitPrice
 	if math.Abs(item.TotalPrice-expectedTotal) > 0.01 {
-		return fmt.Errorf("%w: attendu %.2f, reçu %.2f", ErrInvalidTotalPrice, expectedTotal, item.TotalPrice)
+		return fmt.Errorf("%w: expected %.2f, got %.2f", ErrInvalidTotalPrice, expectedTotal, item.TotalPrice)
 	}
 	return nil
 }
 
-// OrderMetadata contient les métadonnées techniques et contextuelles pour l'événement de commande.
-// Ces informations sont essentielles pour le suivi, le débogage et l'analyse du flux de messages.
+// OrderMetadata contains technical and contextual metadata for the order event.
+// This information is essential for tracking, debugging, and analyzing the message flow.
 type OrderMetadata struct {
-	Timestamp     string `json:"timestamp"`      // Horodatage de la création de l'événement (RFC3339).
-	Version       string `json:"version"`        // Version du schéma de données.
-	EventType     string `json:"event_type"`     // Type d'événement (ex: "order.created").
-	Source        string `json:"source"`         // Source de l'événement (ex: "producer-service").
-	CorrelationID string `json:"correlation_id"` // Identifiant de corrélation pour le traçage distribué.
+	Timestamp     string `json:"timestamp"`      // Event creation timestamp (RFC3339).
+	Version       string `json:"version"`        // Data schema version.
+	EventType     string `json:"event_type"`     // Event type (e.g., "order.created").
+	Source        string `json:"source"`         // Event source (e.g., "producer-service").
+	CorrelationID string `json:"correlation_id"` // Correlation identifier for distributed tracing.
 }
 
-// Order est la structure principale représentant une commande client complète.
-// Elle agrège toutes les informations nécessaires au traitement dans un seul message,
-// suivant le principe de transfert d'état porté par événement (ECST).
+// Order is the main structure representing a complete customer order.
+// It aggregates all necessary information for processing into a single message,
+// following the Event-Carried State Transfer (ECST) pattern.
 type Order struct {
-	// Identifiants
-	OrderID  string `json:"order_id"` // Identifiant unique de la commande (UUID).
-	Sequence int    `json:"sequence"` // Numéro de séquence incrémental.
-	Status   string `json:"status"`   // État de la commande (ex: "pending").
+	// Identifiers
+	OrderID  string `json:"order_id"` // Unique identifier of the order (UUID).
+	Sequence int    `json:"sequence"` // Incremental sequence number.
+	Status   string `json:"status"`   // Status of the order (e.g., "pending").
 
-	// Informations client (dénormalisées pour ECST)
+	// Customer Information (denormalized for ECST)
 	CustomerInfo CustomerInfo `json:"customer_info"`
 
-	// Articles de la commande
+	// Order Items
 	Items []OrderItem `json:"items"`
 
-	// Instantané de l'inventaire au moment de la commande
+	// Inventory Snapshot at the time of order
 	Inventory InventoryStatus `json:"inventory"`
 
-	// Détails financiers
-	SubTotal    float64 `json:"subtotal"`     // Somme des articles.
-	Tax         float64 `json:"tax"`          // Montant de la taxe.
-	ShippingFee float64 `json:"shipping_fee"` // Frais de livraison.
-	Total       float64 `json:"total"`        // Montant total.
-	Currency    string  `json:"currency"`     // Devise (ex: "EUR").
+	// Financial Details
+	SubTotal    float64 `json:"subtotal"`     // Sum of items.
+	Tax         float64 `json:"tax"`          // Tax amount.
+	ShippingFee float64 `json:"shipping_fee"` // Shipping fee.
+	Total       float64 `json:"total"`        // Total amount.
+	Currency    string  `json:"currency"`     // Currency (e.g., "EUR").
 
-	// Paiement et livraison
-	PaymentMethod string `json:"payment_method"`       // Méthode de paiement utilisée.
-	DeliveryNotes string `json:"delivery_notes,omitempty"` // Notes de livraison optionnelles.
+	// Payment and Delivery
+	PaymentMethod string `json:"payment_method"`           // Payment method used.
+	DeliveryNotes string `json:"delivery_notes,omitempty"` // Optional delivery notes.
 
-	// Métadonnées de l'événement
+	// Event Metadata
 	Metadata OrderMetadata `json:"metadata"`
 }
 
-// Validate vérifie qu'une commande est valide.
-// Elle valide tous les champs requis et la cohérence des montants.
+// Validate checks that an order is valid.
+// It validates all required fields and the consistency of amounts.
 //
-// Retourne:
-//   - error: Une erreur si la commande est invalide.
+// Returns:
+//   - error: An error if the order is invalid.
 func (o *Order) Validate() error {
-	// Validations de base
+	// Basic Validations
 	if strings.TrimSpace(o.OrderID) == "" {
 		return ErrEmptyOrderID
 	}
@@ -170,12 +170,12 @@ func (o *Order) Validate() error {
 		return ErrEmptyStatus
 	}
 
-	// Validation du client
+	// Customer Validation
 	if err := o.CustomerInfo.Validate(); err != nil {
 		return err
 	}
 
-	// Validation des articles
+	// Items Validation
 	if len(o.Items) == 0 {
 		return ErrNoItems
 	}
@@ -183,14 +183,14 @@ func (o *Order) Validate() error {
 	var calculatedSubtotal float64
 	for i, item := range o.Items {
 		if err := item.Validate(); err != nil {
-			return fmt.Errorf("article %d: %w", i+1, err)
+			return fmt.Errorf("item %d: %w", i+1, err)
 		}
 		calculatedSubtotal += item.TotalPrice
 	}
 
-	// Validations financières
+	// Financial Validations
 	if math.Abs(o.SubTotal-calculatedSubtotal) > 0.01 {
-		return fmt.Errorf("%w: attendu %.2f, reçu %.2f", ErrInvalidSubtotal, calculatedSubtotal, o.SubTotal)
+		return fmt.Errorf("%w: expected %.2f, got %.2f", ErrInvalidSubtotal, calculatedSubtotal, o.SubTotal)
 	}
 
 	if o.Tax < 0 {
@@ -199,16 +199,16 @@ func (o *Order) Validate() error {
 
 	expectedTotal := o.SubTotal + o.Tax + o.ShippingFee
 	if math.Abs(o.Total-expectedTotal) > 0.01 {
-		return fmt.Errorf("%w: attendu %.2f, reçu %.2f", ErrInvalidTotal, expectedTotal, o.Total)
+		return fmt.Errorf("%w: expected %.2f, got %.2f", ErrInvalidTotal, expectedTotal, o.Total)
 	}
 
 	return nil
 }
 
-// IsValid retourne vrai si la commande est valide.
+// IsValid returns true if the order is valid.
 //
-// Retourne:
-//   - bool: Vrai si la validation réussit, faux sinon.
+// Returns:
+//   - bool: True if validation succeeds, false otherwise.
 func (o *Order) IsValid() bool {
 	return o.Validate() == nil
 }

@@ -1,136 +1,136 @@
 /*
-Package config fournit la configuration centralisée pour le système PubSub.
+Package config provides centralized configuration for the PubSub system.
 
-Ce paquet contient toutes les constantes et structures de configuration
-partagées entre les composants producer, tracker et monitor.
+This package contains all constants and configuration structures
+shared between the producer, tracker, and monitor components.
 */
 package config
 
 import "time"
 
-// Configuration par défaut de Kafka
+// Default Kafka Configuration
 const (
-	// DefaultKafkaBroker est l'adresse par défaut du broker Kafka.
+	// DefaultKafkaBroker is the default Kafka broker address.
 	DefaultKafkaBroker = "localhost:9092"
-	// DefaultConsumerGroup est le groupe de consommateurs par défaut.
+	// DefaultConsumerGroup is the default consumer group.
 	DefaultConsumerGroup = "order-tracker-group"
-	// DefaultTopic est le topic Kafka par défaut.
+	// DefaultTopic is the default Kafka topic.
 	DefaultTopic = "orders"
 )
 
-// Fichiers de logs
+// Log Files
 const (
-	// TrackerLogFile est le nom du fichier de journalisation structurée.
+	// TrackerLogFile is the name of the structured log file.
 	TrackerLogFile = "tracker.log"
-	// TrackerEventsFile est le nom du fichier d'audit des événements.
+	// TrackerEventsFile is the name of the event audit file.
 	TrackerEventsFile = "tracker.events"
 )
 
-// Délais et intervalles communs
+// Common timeouts and intervals
 const (
-	// FlushTimeoutMs est le délai d'expiration par défaut pour le flush des messages (en ms).
+	// FlushTimeoutMs is the default flush timeout for messages (in ms).
 	FlushTimeoutMs = 15000
 )
 
-// Constantes pour le producteur
+// Producer constants
 const (
-	// ProducerMessageInterval définit l'intervalle entre l'envoi de deux messages.
+	// ProducerMessageInterval defines the interval between sending two messages.
 	ProducerMessageInterval = 2 * time.Second
-	// ProducerFlushTimeout définit le temps maximum d'attente pour l'envoi des messages à l'arrêt.
+	// ProducerFlushTimeout defines the maximum wait time for sending messages on shutdown.
 	ProducerFlushTimeout = 5 * time.Second
-	// ProducerDeliveryChannelSize est la taille du tampon pour les rapports de livraison.
+	// ProducerDeliveryChannelSize is the buffer size for delivery reports.
 	ProducerDeliveryChannelSize = 10000
-	// ProducerDefaultTaxRate est le taux de taxe par défaut.
+	// ProducerDefaultTaxRate is the default tax rate.
 	ProducerDefaultTaxRate = 0.20
-	// ProducerDefaultShippingFee est le frais de port par défaut.
+	// ProducerDefaultShippingFee is the default shipping fee.
 	ProducerDefaultShippingFee = 2.50
-	// ProducerDefaultCurrency est la devise par défaut.
+	// ProducerDefaultCurrency is the default currency.
 	ProducerDefaultCurrency = "EUR"
-	// ProducerDefaultPayment est le moyen de paiement par défaut.
+	// ProducerDefaultPayment is the default payment method.
 	ProducerDefaultPayment = "credit_card"
-	// ProducerDefaultWarehouse est l'entrepôt par défaut.
+	// ProducerDefaultWarehouse is the default warehouse.
 	ProducerDefaultWarehouse = "PARIS-01"
 )
 
-// Constantes pour le tracker (consommateur)
+// Tracker (consumer) constants
 const (
-	// TrackerMetricsInterval est l'intervalle de calcul des métriques.
+	// TrackerMetricsInterval is the metrics calculation interval.
 	TrackerMetricsInterval = 30 * time.Second
-	// TrackerConsumerReadTimeout est le temps d'attente pour la lecture d'un message Kafka.
+	// TrackerConsumerReadTimeout is the wait time for reading a Kafka message.
 	TrackerConsumerReadTimeout = 1 * time.Second
-	// TrackerMaxConsecutiveErrors est le nombre maximum d'erreurs consécutives tolérées avant alerte.
+	// TrackerMaxConsecutiveErrors is the maximum number of consecutive errors tolerated before alerting.
 	TrackerMaxConsecutiveErrors = 3
-	// TrackerServiceName est le nom du service pour les logs.
+	// TrackerServiceName is the service name for logs.
 	TrackerServiceName = "order-tracker"
 )
 
-// Constantes pour le moniteur de logs
+// Log Monitor constants
 const (
-	// MonitorMaxRecentLogs est le nombre maximum de logs récents à conserver en mémoire.
+	// MonitorMaxRecentLogs is the maximum number of recent logs to keep in memory.
 	MonitorMaxRecentLogs = 20
-	// MonitorMaxRecentEvents est le nombre maximum d'événements récents à conserver en mémoire.
+	// MonitorMaxRecentEvents is the maximum number of recent events to keep in memory.
 	MonitorMaxRecentEvents = 20
-	// MonitorMaxHistorySize est la taille de l'historique pour les graphiques.
+	// MonitorMaxHistorySize is the history size for charts.
 	MonitorMaxHistorySize = 50
-	// MonitorLogChannelBuffer est la taille du buffer pour le canal de logs.
+	// MonitorLogChannelBuffer is the buffer size for the log channel.
 	MonitorLogChannelBuffer = 100
-	// MonitorEventChannelBuffer est la taille du buffer pour le canal d'événements.
+	// MonitorEventChannelBuffer is the buffer size for the event channel.
 	MonitorEventChannelBuffer = 100
 
-	// Seuils de taux de succès (%)
+	// Success Rate Thresholds (%)
 
-	// MonitorSuccessRateExcellent définit le seuil pour un taux de succès excellent.
+	// MonitorSuccessRateExcellent defines the threshold for an excellent success rate.
 	MonitorSuccessRateExcellent = 95.0
-	// MonitorSuccessRateGood définit le seuil pour un taux de succès bon.
+	// MonitorSuccessRateGood defines the threshold for a good success rate.
 	MonitorSuccessRateGood = 80.0
 
-	// Seuils de débit (messages par seconde)
+	// Throughput Thresholds (messages per second)
 
-	// MonitorThroughputNormal définit le seuil pour un débit normal.
+	// MonitorThroughputNormal defines the threshold for normal throughput.
 	MonitorThroughputNormal = 0.3
-	// MonitorThroughputLow définit le seuil pour un débit faible.
+	// MonitorThroughputLow defines the threshold for low throughput.
 	MonitorThroughputLow = 0.1
 
-	// Seuils de temps d'erreur
+	// Error Timeout Thresholds
 
-	// MonitorErrorTimeoutCritical est le délai avant qu'une erreur soit considérée critique.
+	// MonitorErrorTimeoutCritical is the delay before an error is considered critical.
 	MonitorErrorTimeoutCritical = 1 * time.Minute
-	// MonitorErrorTimeoutWarning est le délai avant qu'une erreur soit considérée comme un avertissement.
+	// MonitorErrorTimeoutWarning is the delay before an error is considered a warning.
 	MonitorErrorTimeoutWarning = 5 * time.Minute
 
-	// Seuils de score de qualité pour le débit
+	// Throughput Quality Score Thresholds
 
-	// MonitorQualityThroughputHigh est le seuil pour un score de débit élevé.
+	// MonitorQualityThroughputHigh is the threshold for a high throughput score.
 	MonitorQualityThroughputHigh = 0.5
-	// MonitorQualityThroughputMedium est le seuil pour un score de débit moyen.
+	// MonitorQualityThroughputMedium is the threshold for a medium throughput score.
 	MonitorQualityThroughputMedium = 0.3
-	// MonitorQualityThroughputLow est le seuil pour un score de débit faible.
+	// MonitorQualityThroughputLow is the threshold for a low throughput score.
 	MonitorQualityThroughputLow = 0.1
 
-	// Seuils de score de qualité global
+	// Global Quality Score Thresholds
 
-	// MonitorQualityScoreExcellent est le seuil pour un score de qualité global excellent.
+	// MonitorQualityScoreExcellent is the threshold for an excellent global quality score.
 	MonitorQualityScoreExcellent = 90.0
-	// MonitorQualityScoreGood est le seuil pour un score de qualité global bon.
+	// MonitorQualityScoreGood is the threshold for a good global quality score.
 	MonitorQualityScoreGood = 70.0
-	// MonitorQualityScoreMedium est le seuil pour un score de qualité global moyen.
+	// MonitorQualityScoreMedium is the threshold for a medium global quality score.
 	MonitorQualityScoreMedium = 50.0
 
-	// Intervalles de temps
+	// Time Intervals
 
-	// MonitorFileCheckInterval est l'intervalle de vérification de l'existence des fichiers.
+	// MonitorFileCheckInterval is the interval for checking file existence.
 	MonitorFileCheckInterval = 1 * time.Second
-	// MonitorFilePollInterval est l'intervalle de lecture des nouveaux contenus dans les fichiers.
+	// MonitorFilePollInterval is the interval for reading new content in files.
 	MonitorFilePollInterval = 200 * time.Millisecond
-	// MonitorUIUpdateInterval est l'intervalle de rafraîchissement de l'interface utilisateur.
+	// MonitorUIUpdateInterval is the UI refresh interval.
 	MonitorUIUpdateInterval = 500 * time.Millisecond
 
-	// Limites d'affichage
+	// Display Limits
 
-	// MonitorMaxLogRowLength est la longueur maximale d'une ligne de log affichée.
+	// MonitorMaxLogRowLength is the maximum length of a displayed log row.
 	MonitorMaxLogRowLength = 75
-	// MonitorMaxEventRowLength est la longueur maximale d'une ligne d'événement affichée.
+	// MonitorMaxEventRowLength is the maximum length of a displayed event row.
 	MonitorMaxEventRowLength = 75
-	// MonitorTruncateSuffix est le suffixe ajouté lorsque le texte est tronqué.
+	// MonitorTruncateSuffix is the suffix added when text is truncated.
 	MonitorTruncateSuffix = "..."
 )

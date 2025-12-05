@@ -1,8 +1,8 @@
 /*
-Package monitor fournit un moniteur de logs en temps réel TUI pour le système PubSub.
+Package monitor provides a real-time TUI log monitor for the PubSub system.
 
-Ce paquet implémente la surveillance de fichiers, l'analyse de logs, la visualisation de métriques,
-et une interface utilisateur terminal interactive utilisant les widgets termui.
+This package implements file monitoring, log analysis, metrics visualization,
+and an interactive terminal user interface using termui widgets.
 */
 package monitor
 
@@ -22,19 +22,19 @@ import (
 	"github.com/gizak/termui/v3/widgets"
 )
 
-// HealthStatus définit les niveaux de santé pour les indicateurs du tableau de bord.
+// HealthStatus defines health levels for dashboard indicators.
 type HealthStatus int
 
 const (
-	// HealthGood indique une condition saine, typiquement affichée en vert.
+	// HealthGood indicates a healthy condition, typically displayed in green.
 	HealthGood HealthStatus = iota
-	// HealthWarning indique un avertissement, typiquement affiché en jaune.
+	// HealthWarning indicates a warning, typically displayed in yellow.
 	HealthWarning
-	// HealthCritical indique un état critique, typiquement affiché en rouge.
+	// HealthCritical indicates a critical state, typically displayed in red.
 	HealthCritical
 )
 
-// Alias locaux pour la lisibilité
+// Local aliases for readability
 const (
 	MaxRecentLogs           = config.MonitorMaxRecentLogs
 	MaxRecentEvents         = config.MonitorMaxRecentEvents
@@ -61,34 +61,34 @@ const (
 	TruncateSuffix          = config.MonitorTruncateSuffix
 )
 
-// Metrics agrège et gère l'état de toutes les métriques collectées par le moniteur.
+// Metrics aggregates and manages the state of all metrics collected by the monitor.
 type Metrics struct {
 	mu                    sync.RWMutex
-	StartTime             time.Time            // Heure de démarrage du moniteur.
-	MessagesReceived      int64                // Nombre total de messages reçus.
-	MessagesProcessed     int64                // Nombre total de messages traités avec succès.
-	MessagesFailed        int64                // Nombre total de messages échoués.
-	MessagesPerSecond     []float64            // Historique du débit de messages.
-	SuccessRateHistory    []float64            // Historique du taux de succès.
-	RecentLogs            []models.LogEntry    // Liste des logs récents.
-	RecentEvents          []models.EventEntry  // Liste des événements récents.
-	LastUpdateTime        time.Time            // Dernière mise à jour des métriques.
-	Uptime                time.Duration        // Temps de fonctionnement.
-	CurrentMessagesPerSec float64              // Débit actuel.
-	CurrentSuccessRate    float64              // Taux de succès actuel.
-	ErrorCount            int64                // Nombre total d'erreurs.
-	LastErrorTime         time.Time            // Heure de la dernière erreur.
+	StartTime             time.Time           // Monitor start time.
+	MessagesReceived      int64               // Total number of messages received.
+	MessagesProcessed     int64               // Total number of messages processed successfully.
+	MessagesFailed        int64               // Total number of failed messages.
+	MessagesPerSecond     []float64           // Message throughput history.
+	SuccessRateHistory    []float64           // Success rate history.
+	RecentLogs            []models.LogEntry   // List of recent logs.
+	RecentEvents          []models.EventEntry // List of recent events.
+	LastUpdateTime        time.Time           // Last metrics update time.
+	Uptime                time.Duration       // Uptime duration.
+	CurrentMessagesPerSec float64             // Current throughput.
+	CurrentSuccessRate    float64             // Current success rate.
+	ErrorCount            int64               // Total number of errors.
+	LastErrorTime         time.Time           // Time of the last error.
 }
 
-// Monitor encapsule toutes les fonctionnalités de surveillance.
+// Monitor encapsulates all monitoring functionalities.
 type Monitor struct {
-	Metrics *Metrics // Les métriques surveillées.
+	Metrics *Metrics // The monitored metrics.
 }
 
-// New crée une nouvelle instance de Monitor.
+// New creates a new Monitor instance.
 //
-// Retourne:
-//   - *Monitor: Une nouvelle instance de Monitor initialisée.
+// Returns:
+//   - *Monitor: A new initialized Monitor instance.
 func New() *Monitor {
 	return &Monitor{
 		Metrics: &Metrics{
@@ -102,14 +102,14 @@ func New() *Monitor {
 	}
 }
 
-// WaitForFile attend que le fichier spécifié existe et retourne un descripteur ouvert.
-// Cette fonction bloque jusqu'à ce que le fichier soit accessible.
+// WaitForFile waits for the specified file to exist and returns an open file descriptor.
+// This function blocks until the file is accessible.
 //
-// Paramètres:
-//   - filename: Le chemin du fichier à attendre.
+// Parameters:
+//   - filename: The path of the file to wait for.
 //
-// Retourne:
-//   - *os.File: Le descripteur de fichier ouvert.
+// Returns:
+//   - *os.File: The open file descriptor.
 func WaitForFile(filename string) *os.File {
 	for {
 		file, err := os.Open(filename)
@@ -120,13 +120,13 @@ func WaitForFile(filename string) *os.File {
 	}
 }
 
-// waitForFileRecreation attend qu'un fichier supprimé soit recréé.
+// waitForFileRecreation waits for a deleted file to be recreated.
 //
-// Paramètres:
-//   - filename: Le chemin du fichier à attendre.
+// Parameters:
+//   - filename: The path of the file to wait for.
 //
-// Retourne:
-//   - *os.File: Le descripteur de fichier ouvert.
+// Returns:
+//   - *os.File: The open file descriptor.
 func waitForFileRecreation(filename string) *os.File {
 	for {
 		time.Sleep(FileCheckInterval)
@@ -137,49 +137,49 @@ func waitForFileRecreation(filename string) *os.File {
 	}
 }
 
-// parseAndSendLogEntry analyse une ligne JSON et l'envoie au canal approprié.
+// parseAndSendLogEntry parses a JSON line and sends it to the appropriate channel.
 //
-// Paramètres:
-//   - line: La ligne de texte JSON à analyser.
-//   - logChan: Le canal où envoyer l'entrée de log analysée.
+// Parameters:
+//   - line: The JSON text line to parse.
+//   - logChan: The channel to send the parsed log entry to.
 func parseAndSendLogEntry(line string, logChan chan<- models.LogEntry) {
 	var entry models.LogEntry
 	if err := json.Unmarshal([]byte(line), &entry); err == nil {
 		select {
 		case logChan <- entry:
 		default:
-			// Canal plein, ignorer
+			// Channel full, ignore
 		}
 	}
 }
 
-// parseAndSendEventEntry analyse une ligne JSON et l'envoie au canal approprié.
+// parseAndSendEventEntry parses a JSON line and sends it to the appropriate channel.
 //
-// Paramètres:
-//   - line: La ligne de texte JSON à analyser.
-//   - eventChan: Le canal où envoyer l'entrée d'événement analysée.
+// Parameters:
+//   - line: The JSON text line to parse.
+//   - eventChan: The channel to send the parsed event entry to.
 func parseAndSendEventEntry(line string, eventChan chan<- models.EventEntry) {
 	var entry models.EventEntry
 	if err := json.Unmarshal([]byte(line), &entry); err == nil {
 		select {
 		case eventChan <- entry:
 		default:
-			// Canal plein, ignorer
+			// Channel full, ignore
 		}
 	}
 }
 
-// readNewLines lit les nouvelles lignes du fichier et les envoie aux canaux.
+// readNewLines reads new lines from the file and sends them to the channels.
 //
-// Paramètres:
-//   - file: Le descripteur de fichier.
-//   - filename: Le nom du fichier (pour identifier le type de log).
-//   - currentPos: La position actuelle de lecture dans le fichier.
-//   - logChan: Le canal pour les logs.
-//   - eventChan: Le canal pour les événements.
+// Parameters:
+//   - file: The file descriptor.
+//   - filename: The file name (to identify the log type).
+//   - currentPos: The current reading position in the file.
+//   - logChan: The channel for logs.
+//   - eventChan: The channel for events.
 //
-// Retourne:
-//   - int64: La nouvelle position de lecture.
+// Returns:
+//   - int64: The new reading position.
 func readNewLines(file *os.File, filename string, currentPos int64, logChan chan<- models.LogEntry, eventChan chan<- models.EventEntry) int64 {
 	_, err := file.Seek(currentPos, 0)
 	if err != nil {
@@ -211,12 +211,12 @@ func readNewLines(file *os.File, filename string, currentPos int64, logChan chan
 	return newPos
 }
 
-// MonitorFile surveille un fichier en continu, similaire à `tail -f`.
+// MonitorFile continuously monitors a file, similar to `tail -f`.
 //
-// Paramètres:
-//   - filename: Le chemin du fichier à surveiller.
-//   - logChan: Le canal où envoyer les logs.
-//   - eventChan: Le canal où envoyer les événements.
+// Parameters:
+//   - filename: The path of the file to monitor.
+//   - logChan: The channel to send logs to.
+//   - eventChan: The channel to send events to.
 func MonitorFile(filename string, logChan chan<- models.LogEntry, eventChan chan<- models.EventEntry) {
 	file := WaitForFile(filename)
 	var currentPos int64
@@ -247,10 +247,10 @@ func MonitorFile(filename string, logChan chan<- models.LogEntry, eventChan chan
 	}
 }
 
-// ProcessLog traite une entrée de journal provenant de tracker.log et met à jour les métriques.
+// ProcessLog processes a log entry from tracker.log and updates metrics.
 //
-// Paramètres:
-//   - entry: L'entrée de log à traiter.
+// Parameters:
+//   - entry: The log entry to process.
 func (m *Monitor) ProcessLog(entry models.LogEntry) {
 	m.Metrics.mu.Lock()
 	defer m.Metrics.mu.Unlock()
@@ -298,10 +298,10 @@ func (m *Monitor) ProcessLog(entry models.LogEntry) {
 	m.Metrics.LastUpdateTime = time.Now()
 }
 
-// ProcessEvent traite une entrée d'événement provenant de tracker.events et met à jour les métriques.
+// ProcessEvent processes an event entry from tracker.events and updates metrics.
 //
-// Paramètres:
-//   - entry: L'entrée d'événement à traiter.
+// Parameters:
+//   - entry: The event entry to process.
 func (m *Monitor) ProcessEvent(entry models.EventEntry) {
 	m.Metrics.mu.Lock()
 	defer m.Metrics.mu.Unlock()
@@ -331,24 +331,24 @@ func (m *Monitor) ProcessEvent(entry models.EventEntry) {
 	m.Metrics.LastUpdateTime = time.Now()
 }
 
-// StatusThreshold définit un seuil pour l'évaluation de l'état.
+// StatusThreshold defines a threshold for status evaluation.
 type StatusThreshold struct {
-	MinValue float64      // La valeur minimale pour ce seuil.
-	Status   HealthStatus // L'état de santé associé.
-	Text     string       // Le texte à afficher.
-	Color    ui.Color     // La couleur à utiliser.
+	MinValue float64      // The minimum value for this threshold.
+	Status   HealthStatus // The associated health status.
+	Text     string       // The text to display.
+	Color    ui.Color     // The color to use.
 }
 
-// evaluateStatus évalue une valeur par rapport à des seuils ordonnés.
+// evaluateStatus evaluates a value against ordered thresholds.
 //
-// Paramètres:
-//   - value: La valeur à évaluer.
-//   - thresholds: La liste des seuils.
+// Parameters:
+//   - value: The value to evaluate.
+//   - thresholds: The list of thresholds.
 //
-// Retourne:
-//   - HealthStatus: L'état de santé.
-//   - string: Le texte associé.
-//   - ui.Color: La couleur associée.
+// Returns:
+//   - HealthStatus: The health status.
+//   - string: The associated text.
+//   - ui.Color: The associated color.
 func evaluateStatus(value float64, thresholds []StatusThreshold) (HealthStatus, string, ui.Color) {
 	for _, t := range thresholds {
 		if value >= t.MinValue {
@@ -359,83 +359,83 @@ func evaluateStatus(value float64, thresholds []StatusThreshold) (HealthStatus, 
 		last := thresholds[len(thresholds)-1]
 		return last.Status, last.Text, last.Color
 	}
-	return HealthCritical, "● INCONNU", ui.ColorRed
+	return HealthCritical, "● UNKNOWN", ui.ColorRed
 }
 
 var (
 	healthThresholds = []StatusThreshold{
 		{SuccessRateExcellent, HealthGood, "● EXCELLENT", ui.ColorGreen},
-		{SuccessRateGood, HealthWarning, "● BON", ui.ColorYellow},
-		{0, HealthCritical, "● CRITIQUE", ui.ColorRed},
+		{SuccessRateGood, HealthWarning, "● GOOD", ui.ColorYellow},
+		{0, HealthCritical, "● CRITICAL", ui.ColorRed},
 	}
 
 	throughputThresholds = []StatusThreshold{
 		{ThroughputNormal, HealthGood, "● NORMAL", ui.ColorGreen},
-		{ThroughputLow, HealthWarning, "● FAIBLE", ui.ColorYellow},
-		{0, HealthCritical, "● ARRÊTÉ", ui.ColorRed},
+		{ThroughputLow, HealthWarning, "● LOW", ui.ColorYellow},
+		{0, HealthCritical, "● STOPPED", ui.ColorRed},
 	}
 )
 
-// GetHealthStatus évalue le taux de succès et retourne un état de santé.
+// GetHealthStatus evaluates the success rate and returns a health status.
 //
-// Paramètres:
-//   - successRate: Le taux de succès en pourcentage.
+// Parameters:
+//   - successRate: The success rate in percentage.
 //
-// Retourne:
-//   - HealthStatus: L'état de santé.
-//   - string: Le texte d'état.
-//   - ui.Color: La couleur d'état.
+// Returns:
+//   - HealthStatus: The health status.
+//   - string: The status text.
+//   - ui.Color: The status color.
 func GetHealthStatus(successRate float64) (HealthStatus, string, ui.Color) {
 	return evaluateStatus(successRate, healthThresholds)
 }
 
-// GetThroughputStatus évalue le débit de messages et retourne un état de santé.
+// GetThroughputStatus evaluates the message throughput and returns a health status.
 //
-// Paramètres:
-//   - mps: Le débit en messages par seconde.
+// Parameters:
+//   - mps: The throughput in messages per second.
 //
-// Retourne:
-//   - HealthStatus: L'état de santé.
-//   - string: Le texte d'état.
-//   - ui.Color: La couleur d'état.
+// Returns:
+//   - HealthStatus: The health status.
+//   - string: The status text.
+//   - ui.Color: The status color.
 func GetThroughputStatus(mps float64) (HealthStatus, string, ui.Color) {
 	return evaluateStatus(mps, throughputThresholds)
 }
 
-// GetErrorStatus évalue les erreurs et retourne un état de santé.
+// GetErrorStatus evaluates errors and returns a health status.
 //
-// Paramètres:
-//   - errorCount: Le nombre total d'erreurs.
-//   - lastErrorTime: L'heure de la dernière erreur.
+// Parameters:
+//   - errorCount: The total number of errors.
+//   - lastErrorTime: The time of the last error.
 //
-// Retourne:
-//   - HealthStatus: L'état de santé.
-//   - string: Le texte d'état.
-//   - ui.Color: La couleur d'état.
+// Returns:
+//   - HealthStatus: The health status.
+//   - string: The status text.
+//   - ui.Color: The status color.
 func GetErrorStatus(errorCount int64, lastErrorTime time.Time) (HealthStatus, string, ui.Color) {
 	if errorCount == 0 {
-		return HealthGood, "● AUCUNE", ui.ColorGreen
+		return HealthGood, "● NONE", ui.ColorGreen
 	}
 
 	timeSinceError := time.Since(lastErrorTime)
 	if timeSinceError > ErrorTimeoutWarning {
-		return HealthGood, "● AUCUNE", ui.ColorGreen
+		return HealthGood, "● NONE", ui.ColorGreen
 	} else if timeSinceError > ErrorTimeoutCritical {
-		return HealthWarning, "● RÉCENTE", ui.ColorYellow
+		return HealthWarning, "● RECENT", ui.ColorYellow
 	}
 	return HealthCritical, "● ACTIVE", ui.ColorRed
 }
 
-// CalculateQualityScore calcule un score de qualité global (0-100).
+// CalculateQualityScore calculates a global quality score (0-100).
 //
-// Paramètres:
-//   - successRate: Le taux de succès en pourcentage.
-//   - mps: Le débit en messages par seconde.
-//   - errorCount: Le nombre d'erreurs.
-//   - uptime: La durée de fonctionnement.
+// Parameters:
+//   - successRate: The success rate in percentage.
+//   - mps: The throughput in messages per second.
+//   - errorCount: The number of errors.
+//   - uptime: The uptime duration.
 //
-// Retourne:
-//   - float64: Le score de qualité calculé.
+// Returns:
+//   - float64: The calculated quality score.
 func CalculateQualityScore(successRate, mps float64, errorCount int64, uptime time.Duration) float64 {
 	successScore := (successRate / 100.0) * 50.0
 
@@ -465,20 +465,20 @@ func CalculateQualityScore(successRate, mps float64, errorCount int64, uptime ti
 	return successScore + throughputScore + errorScore
 }
 
-// CreateMetricsTable initialise le widget de tableau des métriques.
+// CreateMetricsTable initializes the metrics table widget.
 //
-// Retourne:
-//   - *widgets.Table: Le widget table initialisé.
+// Returns:
+//   - *widgets.Table: The initialized table widget.
 func CreateMetricsTable() *widgets.Table {
 	table := widgets.NewTable()
 	table.Rows = [][]string{
-		{"Métrique", "Valeur"},
-		{"Messages reçus", "0"},
-		{"Messages traités", "0"},
-		{"Messages échoués", "0"},
-		{"Débit (msg/s)", "0.00"},
-		{"Taux de succès", "0.00%"},
-		{"Dernière màj", "-"},
+		{"Metric", "Value"},
+		{"Messages received", "0"},
+		{"Messages processed", "0"},
+		{"Messages failed", "0"},
+		{"Throughput (msg/s)", "0.00"},
+		{"Success rate", "0.00%"},
+		{"Last update", "-"},
 	}
 	table.TextStyle = ui.NewStyle(ui.ColorWhite)
 	table.RowStyles[0] = ui.NewStyle(ui.ColorYellow, ui.ColorClear, ui.ModifierBold)
@@ -487,20 +487,20 @@ func CreateMetricsTable() *widgets.Table {
 	return table
 }
 
-// CreateHealthDashboard initialise le widget de tableau de bord de santé.
+// CreateHealthDashboard initializes the health dashboard widget.
 //
-// Retourne:
-//   - *widgets.Table: Le widget table initialisé.
+// Returns:
+//   - *widgets.Table: The initialized table widget.
 func CreateHealthDashboard() *widgets.Table {
 	table := widgets.NewTable()
 	table.Rows = [][]string{
-		{"Indicateur", "État"},
-		{"Santé globale", "●"},
-		{"Taux de succès", "●"},
-		{"Débit", "●"},
-		{"Erreurs", "●"},
-		{"Temps d'activité", "-"},
-		{"Qualité", "-"},
+		{"Indicator", "Status"},
+		{"Global Health", "●"},
+		{"Success Rate", "●"},
+		{"Throughput", "●"},
+		{"Errors", "●"},
+		{"Uptime", "-"},
+		{"Quality", "-"},
 	}
 	table.TextStyle = ui.NewStyle(ui.ColorWhite)
 	table.RowStyles[0] = ui.NewStyle(ui.ColorYellow, ui.ColorClear, ui.ModifierBold)
@@ -509,14 +509,14 @@ func CreateHealthDashboard() *widgets.Table {
 	return table
 }
 
-// CreateLogList initialise le widget de liste des logs.
+// CreateLogList initializes the log list widget.
 //
-// Retourne:
-//   - *widgets.List: Le widget liste initialisé.
+// Returns:
+//   - *widgets.List: The initialized list widget.
 func CreateLogList() *widgets.List {
 	list := widgets.NewList()
-	list.Title = "Logs Récents (tracker.log)"
-	list.Rows = []string{"En attente de logs..."}
+	list.Title = "Recent Logs (tracker.log)"
+	list.Rows = []string{"Waiting for logs..."}
 	list.TextStyle = ui.NewStyle(ui.ColorWhite)
 	list.SelectedRowStyle = ui.NewStyle(ui.ColorBlack, ui.ColorWhite)
 	list.WrapText = true
@@ -524,14 +524,14 @@ func CreateLogList() *widgets.List {
 	return list
 }
 
-// CreateEventList initialise le widget de liste des événements.
+// CreateEventList initializes the event list widget.
 //
-// Retourne:
-//   - *widgets.List: Le widget liste initialisé.
+// Returns:
+//   - *widgets.List: The initialized list widget.
 func CreateEventList() *widgets.List {
 	list := widgets.NewList()
-	list.Title = "Événements Récents (tracker.events)"
-	list.Rows = []string{"En attente d'événements..."}
+	list.Title = "Recent Events (tracker.events)"
+	list.Rows = []string{"Waiting for events..."}
 	list.TextStyle = ui.NewStyle(ui.ColorWhite)
 	list.SelectedRowStyle = ui.NewStyle(ui.ColorBlack, ui.ColorWhite)
 	list.WrapText = true
@@ -539,13 +539,13 @@ func CreateEventList() *widgets.List {
 	return list
 }
 
-// CreateMessagesPerSecondChart initialise le widget de graphique de débit.
+// CreateMessagesPerSecondChart initializes the throughput chart widget.
 //
-// Retourne:
-//   - *widgets.Plot: Le widget graphique initialisé.
+// Returns:
+//   - *widgets.Plot: The initialized plot widget.
 func CreateMessagesPerSecondChart() *widgets.Plot {
 	plot := widgets.NewPlot()
-	plot.Title = "Débit de messages (msg/s)"
+	plot.Title = "Message Throughput (msg/s)"
 	plot.Data = [][]float64{{}}
 	plot.SetRect(0, 19, 80, 29)
 	plot.AxesColor = ui.ColorWhite
@@ -554,13 +554,13 @@ func CreateMessagesPerSecondChart() *widgets.Plot {
 	return plot
 }
 
-// CreateSuccessRateChart initialise le widget de graphique de taux de succès.
+// CreateSuccessRateChart initializes the success rate chart widget.
 //
-// Retourne:
-//   - *widgets.Plot: Le widget graphique initialisé.
+// Returns:
+//   - *widgets.Plot: The initialized plot widget.
 func CreateSuccessRateChart() *widgets.Plot {
 	plot := widgets.NewPlot()
-	plot.Title = "Taux de succès (%)"
+	plot.Title = "Success Rate (%)"
 	plot.Data = [][]float64{{}}
 	plot.SetRect(80, 19, 160, 29)
 	plot.AxesColor = ui.ColorWhite
@@ -569,34 +569,34 @@ func CreateSuccessRateChart() *widgets.Plot {
 	return plot
 }
 
-// UpdateMetricsTable met à jour le tableau des métriques.
+// UpdateMetricsTable updates the metrics table.
 //
-// Paramètres:
-//   - table: Le widget table à mettre à jour.
-//   - m: Les métriques actuelles.
+// Parameters:
+//   - table: The table widget to update.
+//   - m: The current metrics.
 func UpdateMetricsTable(table *widgets.Table, m *Metrics) {
 	table.Rows = [][]string{
-		{"Métrique", "Valeur"},
-		{"Messages reçus", fmt.Sprintf("%d", m.MessagesReceived)},
-		{"Messages traités", fmt.Sprintf("%d", m.MessagesProcessed)},
-		{"Messages échoués", fmt.Sprintf("%d", m.MessagesFailed)},
-		{"Débit (msg/s)", fmt.Sprintf("%.2f", m.CurrentMessagesPerSec)},
-		{"Taux de succès", fmt.Sprintf("%.2f%%", m.CurrentSuccessRate)},
-		{"Dernière màj", m.LastUpdateTime.Format("15:04:05")},
+		{"Metric", "Value"},
+		{"Messages received", fmt.Sprintf("%d", m.MessagesReceived)},
+		{"Messages processed", fmt.Sprintf("%d", m.MessagesProcessed)},
+		{"Messages failed", fmt.Sprintf("%d", m.MessagesFailed)},
+		{"Throughput (msg/s)", fmt.Sprintf("%.2f", m.CurrentMessagesPerSec)},
+		{"Success rate", fmt.Sprintf("%.2f%%", m.CurrentSuccessRate)},
+		{"Last update", m.LastUpdateTime.Format("15:04:05")},
 	}
 }
 
-// getGlobalHealthStatus détermine la santé globale à partir des états individuels.
+// getGlobalHealthStatus determines the global health from individual statuses.
 //
-// Paramètres:
-//   - successStatus: L'état du taux de succès.
-//   - throughputStatus: L'état du débit.
-//   - errorStatus: L'état des erreurs.
+// Parameters:
+//   - successStatus: The success rate status.
+//   - throughputStatus: The throughput status.
+//   - errorStatus: The error status.
 //
-// Retourne:
-//   - HealthStatus: L'état global.
-//   - string: Le texte d'état.
-//   - ui.Color: La couleur d'état.
+// Returns:
+//   - HealthStatus: The global status.
+//   - string: The status text.
+//   - ui.Color: The status color.
 func getGlobalHealthStatus(successStatus, throughputStatus, errorStatus HealthStatus) (HealthStatus, string, ui.Color) {
 	globalStatus := successStatus
 	if throughputStatus > globalStatus {
@@ -608,40 +608,40 @@ func getGlobalHealthStatus(successStatus, throughputStatus, errorStatus HealthSt
 
 	switch globalStatus {
 	case HealthWarning:
-		return globalStatus, "● ATTENTION", ui.ColorYellow
+		return globalStatus, "● WARNING", ui.ColorYellow
 	case HealthCritical:
-		return globalStatus, "● CRITIQUE", ui.ColorRed
+		return globalStatus, "● CRITICAL", ui.ColorRed
 	default:
 		return HealthGood, "● EXCELLENT", ui.ColorGreen
 	}
 }
 
-// getQualityText retourne le texte et la couleur pour un score de qualité.
+// getQualityText returns the text and color for a quality score.
 //
-// Paramètres:
-//   - qualityScore: Le score de qualité (0-100).
+// Parameters:
+//   - qualityScore: The quality score (0-100).
 //
-// Retourne:
-//   - string: Le texte qualitatif.
-//   - ui.Color: La couleur associée.
+// Returns:
+//   - string: The qualitative text.
+//   - ui.Color: The associated color.
 func getQualityText(qualityScore float64) (string, ui.Color) {
 	if qualityScore >= QualityScoreExcellent {
 		return fmt.Sprintf("EXCELLENT (%.0f)", qualityScore), ui.ColorGreen
 	} else if qualityScore >= QualityScoreGood {
-		return fmt.Sprintf("BON (%.0f)", qualityScore), ui.ColorYellow
+		return fmt.Sprintf("GOOD (%.0f)", qualityScore), ui.ColorYellow
 	} else if qualityScore >= QualityScoreMedium {
-		return fmt.Sprintf("MOYEN (%.0f)", qualityScore), ui.ColorYellow
+		return fmt.Sprintf("MEDIUM (%.0f)", qualityScore), ui.ColorYellow
 	}
-	return fmt.Sprintf("FAIBLE (%.0f)", qualityScore), ui.ColorRed
+	return fmt.Sprintf("LOW (%.0f)", qualityScore), ui.ColorRed
 }
 
-// formatUptime formate le temps d'activité en chaîne lisible.
+// formatUptime formats the uptime duration into a readable string.
 //
-// Paramètres:
-//   - uptime: La durée de fonctionnement.
+// Parameters:
+//   - uptime: The uptime duration.
 //
-// Retourne:
-//   - string: La chaîne formatée (ex: "2.5h", "45m", "30s").
+// Returns:
+//   - string: The formatted string (e.g., "2.5h", "45m", "30s").
 func formatUptime(uptime time.Duration) string {
 	if uptime.Hours() >= 1 {
 		return fmt.Sprintf("%.1fh", uptime.Hours())
@@ -651,11 +651,11 @@ func formatUptime(uptime time.Duration) string {
 	return fmt.Sprintf("%.0fs", uptime.Seconds())
 }
 
-// UpdateHealthDashboard met à jour le tableau de bord de santé.
+// UpdateHealthDashboard updates the health dashboard.
 //
-// Paramètres:
-//   - dashboard: Le widget table à mettre à jour.
-//   - m: Les métriques actuelles.
+// Parameters:
+//   - dashboard: The table widget to update.
+//   - m: The current metrics.
 func UpdateHealthDashboard(dashboard *widgets.Table, m *Metrics) {
 	successStatus, successText, successColor := GetHealthStatus(m.CurrentSuccessRate)
 	throughputStatus, throughputText, throughputColor := GetThroughputStatus(m.CurrentMessagesPerSec)
@@ -668,13 +668,13 @@ func UpdateHealthDashboard(dashboard *widgets.Table, m *Metrics) {
 	uptimeStr := formatUptime(m.Uptime)
 
 	dashboard.Rows = [][]string{
-		{"Indicateur", "État"},
-		{"Santé globale", globalText},
-		{"Taux de succès", successText},
-		{"Débit", throughputText},
-		{"Erreurs", errorText},
-		{"Temps d'activité", uptimeStr},
-		{"Qualité", qualityText},
+		{"Indicator", "Status"},
+		{"Global Health", globalText},
+		{"Success Rate", successText},
+		{"Throughput", throughputText},
+		{"Errors", errorText},
+		{"Uptime", uptimeStr},
+		{"Quality", qualityText},
 	}
 
 	dashboard.RowStyles = make(map[int]ui.Style)
@@ -687,13 +687,13 @@ func UpdateHealthDashboard(dashboard *widgets.Table, m *Metrics) {
 	dashboard.RowStyles[6] = ui.NewStyle(qualityColor, ui.ColorClear, ui.ModifierBold)
 }
 
-// formatLogRow formate une entrée de log pour l'affichage.
+// formatLogRow formats a log entry for display.
 //
-// Paramètres:
-//   - log: L'entrée de log.
+// Parameters:
+//   - log: The log entry.
 //
-// Retourne:
-//   - string: La ligne formatée pour l'UI.
+// Returns:
+//   - string: The formatted line for the UI.
 func formatLogRow(log models.LogEntry) string {
 	levelIcon := "🟢"
 	if log.Level == models.LogLevelERROR {
@@ -712,29 +712,29 @@ func formatLogRow(log models.LogEntry) string {
 	return row
 }
 
-// UpdateLogList met à jour la liste des logs récents.
+// UpdateLogList updates the list of recent logs.
 //
-// Paramètres:
-//   - list: Le widget liste à mettre à jour.
-//   - logs: La liste des logs récents.
+// Parameters:
+//   - list: The list widget to update.
+//   - logs: The list of recent logs.
 func UpdateLogList(list *widgets.List, logs []models.LogEntry) {
 	rows := make([]string, 0, len(logs))
 	for i := len(logs) - 1; i >= 0; i-- {
 		rows = append(rows, formatLogRow(logs[i]))
 	}
 	if len(rows) == 0 {
-		rows = []string{"En attente de logs..."}
+		rows = []string{"Waiting for logs..."}
 	}
 	list.Rows = rows
 }
 
-// formatEventRow formate une entrée d'événement pour l'affichage.
+// formatEventRow formats an event entry for display.
 //
-// Paramètres:
-//   - event: L'entrée d'événement.
+// Parameters:
+//   - event: The event entry.
 //
-// Retourne:
-//   - string: La ligne formatée pour l'UI.
+// Returns:
+//   - string: The formatted line for the UI.
 func formatEventRow(event models.EventEntry) string {
 	status := "❌"
 	if event.Deserialized {
@@ -753,29 +753,29 @@ func formatEventRow(event models.EventEntry) string {
 	return row
 }
 
-// UpdateEventList met à jour la liste des événements récents.
+// UpdateEventList updates the list of recent events.
 //
-// Paramètres:
-//   - list: Le widget liste à mettre à jour.
-//   - events: La liste des événements récents.
+// Parameters:
+//   - list: The list widget to update.
+//   - events: The list of recent events.
 func UpdateEventList(list *widgets.List, events []models.EventEntry) {
 	rows := make([]string, 0, len(events))
 	for i := len(events) - 1; i >= 0; i-- {
 		rows = append(rows, formatEventRow(events[i]))
 	}
 	if len(rows) == 0 {
-		rows = []string{"En attente d'événements..."}
+		rows = []string{"Waiting for events..."}
 	}
 	list.Rows = rows
 }
 
-// UpdateCharts met à jour les graphiques de débit et de taux de succès.
+// UpdateCharts updates the throughput and success rate charts.
 //
-// Paramètres:
-//   - mpsChart: Le widget graphique de débit.
-//   - srChart: Le widget graphique de taux de succès.
-//   - mps: Historique du débit.
-//   - sr: Historique du taux de succès.
+// Parameters:
+//   - mpsChart: The throughput chart widget.
+//   - srChart: The success rate chart widget.
+//   - mps: Throughput history.
+//   - sr: Success rate history.
 func UpdateCharts(mpsChart, srChart *widgets.Plot, mps, sr []float64) {
 	if len(mps) > 0 {
 		mpsChart.Data = [][]float64{mps}
@@ -790,14 +790,14 @@ func UpdateCharts(mpsChart, srChart *widgets.Plot, mps, sr []float64) {
 	}
 }
 
-// UpdateUI rafraîchit tous les widgets UI avec les dernières métriques.
+// UpdateUI refreshes all UI widgets with the latest metrics.
 //
-// Paramètres:
-//   - table: Le tableau des métriques.
-//   - healthDashboard: Le tableau de bord de santé.
-//   - logList: La liste des logs.
-//   - eventList: La liste des événements.
-//   - mpsChart: Le graphique de débit.
+// Parameters:
+//   - table: The metrics table.
+//   - healthDashboard: The health dashboard.
+//   - logList: The log list.
+//   - eventList: The event list.
+//   - mpsChart: The throughput chart.
 //   - srChart: Le graphique de taux de succès.
 func (m *Monitor) UpdateUI(table *widgets.Table, healthDashboard *widgets.Table, logList *widgets.List, eventList *widgets.List, mpsChart *widgets.Plot, srChart *widgets.Plot) {
 	m.Metrics.mu.RLock()

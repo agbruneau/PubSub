@@ -4,72 +4,72 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 )
 
-// KafkaProducer définit l'interface pour les opérations du producteur Kafka.
-// Cette abstraction permet l'injection de dépendances et simplifie les tests.
+// KafkaProducer defines the interface for Kafka producer operations.
+// This abstraction allows dependency injection and simplifies testing.
 type KafkaProducer interface {
-	// Produce envoie un message à Kafka de manière asynchrone.
+	// Produce sends a message to Kafka asynchronously.
 	//
-	// Paramètres:
-	//   - msg: Le message Kafka à envoyer.
-	//   - deliveryChan: Le canal de notification de livraison (optionnel).
+	// Parameters:
+	//   - msg: The Kafka message to send.
+	//   - deliveryChan: The delivery notification channel (optional).
 	//
-	// Retourne:
-	//   - error: Une erreur si l'envoi échoue.
+	// Returns:
+	//   - error: An error if sending fails.
 	Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error
 
-	// Flush attend que tous les messages soient livrés, jusqu'au délai spécifié en ms.
+	// Flush waits for all messages to be delivered, up to the specified timeout in ms.
 	//
-	// Paramètres:
-	//   - timeoutMs: Le délai d'attente maximum en millisecondes.
+	// Parameters:
+	//   - timeoutMs: The maximum wait time in milliseconds.
 	//
-	// Retourne:
-	//   - int: Le nombre de messages restants dans la file d'attente.
+	// Returns:
+	//   - int: The number of remaining messages in the queue.
 	Flush(timeoutMs int) int
 
-	// Close ferme le producteur et libère les ressources.
+	// Close closes the producer and releases resources.
 	Close()
 }
 
-// kafkaProducerWrapper enveloppe un vrai producteur Kafka pour implémenter l'interface.
+// kafkaProducerWrapper wraps a real Kafka producer to implement the interface.
 type kafkaProducerWrapper struct {
-	producer *kafka.Producer // L'instance réelle du producteur.
+	producer *kafka.Producer // The real producer instance.
 }
 
-// newKafkaProducerWrapper crée une enveloppe autour d'un vrai producteur Kafka.
+// newKafkaProducerWrapper creates a wrapper around a real Kafka producer.
 //
-// Paramètres:
-//   - producer: L'instance du producteur Kafka à envelopper.
+// Parameters:
+//   - producer: The Kafka producer instance to wrap.
 //
-// Retourne:
-//   - KafkaProducer: L'interface enveloppant le producteur.
+// Returns:
+//   - KafkaProducer: The interface wrapping the producer.
 func newKafkaProducerWrapper(producer *kafka.Producer) KafkaProducer {
 	return &kafkaProducerWrapper{producer: producer}
 }
 
-// Produce envoie un message via le producteur enveloppé.
+// Produce sends a message via the wrapped producer.
 //
-// Paramètres:
-//   - msg: Le message à produire.
-//   - deliveryChan: Le canal de notification.
+// Parameters:
+//   - msg: The message to produce.
+//   - deliveryChan: The notification channel.
 //
-// Retourne:
-//   - error: Une erreur éventuelle.
+// Returns:
+//   - error: Any potential error.
 func (w *kafkaProducerWrapper) Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error {
 	return w.producer.Produce(msg, deliveryChan)
 }
 
-// Flush attend l'envoi des messages.
+// Flush waits for message delivery.
 //
-// Paramètres:
-//   - timeoutMs: Le délai.
+// Parameters:
+//   - timeoutMs: The timeout.
 //
-// Retourne:
-//   - int: Le nombre de messages non envoyés.
+// Returns:
+//   - int: The number of unsent messages.
 func (w *kafkaProducerWrapper) Flush(timeoutMs int) int {
 	return w.producer.Flush(timeoutMs)
 }
 
-// Close ferme le producteur sous-jacent.
+// Close closes the underlying producer.
 func (w *kafkaProducerWrapper) Close() {
 	w.producer.Close()
 }
