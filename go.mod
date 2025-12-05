@@ -6,6 +6,7 @@ require (
 	github.com/confluentinc/confluent-kafka-go/v2 v2.12.0
 	github.com/gizak/termui/v3 v3.1.0
 	github.com/google/uuid v1.6.0
+	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -17,7 +18,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
-	github.com/stretchr/testify v1.11.1 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
 )

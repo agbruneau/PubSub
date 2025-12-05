@@ -28,6 +28,31 @@ func TestDefaultConfig(t *testing.T) {
 	}
 }
 
+func TestInvalidEnvVars(t *testing.T) {
+	// Set invalid environment variables
+	os.Setenv("PRODUCER_INTERVAL_MS", "invalid")
+	os.Setenv("RETRY_MAX_ATTEMPTS", "not-a-number")
+	defer func() {
+		os.Unsetenv("PRODUCER_INTERVAL_MS")
+		os.Unsetenv("RETRY_MAX_ATTEMPTS")
+	}()
+
+	cfg, err := Load("")
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// Should fall back to defaults (or previously set values)
+	// Default Producer.IntervalMs is 2000 (from DefaultConfig)
+	if cfg.Producer.IntervalMs != 2000 {
+		t.Errorf("Expected default interval 2000, got %d", cfg.Producer.IntervalMs)
+	}
+	// Default Retry.MaxAttempts is 3
+	if cfg.Retry.MaxAttempts != 3 {
+		t.Errorf("Expected default max attempts 3, got %d", cfg.Retry.MaxAttempts)
+	}
+}
+
 func TestLoadWithDefaults(t *testing.T) {
 	// Load with non-existent file should return defaults
 	cfg, err := Load("nonexistent.yaml")
