@@ -2,7 +2,9 @@ package producer
 
 import (
 	"encoding/json"
+	"io"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -95,4 +97,76 @@ func TestRun(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	assert.False(t, producer.running)
+}
+
+func TestHandleDeliveryReports(t *testing.T) {
+	// Capture stdout to verify logs
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	cfg := NewConfig()
+	producer := New(cfg)
+
+	// Create channels
+	producer.deliveryChan = make(chan kafka.Event, 10)
+
+	// Start handler in background
+	go producer.handleDeliveryReports()
+
+	// Send a success message
+	topic := "test-topic"
+	msgSuccess := &kafka.Message{
+		TopicPartition: kafka.TopicPartition{
+			Topic:     &topic,
+			Partition: 0,
+			Offset:    1,
+			Error:     nil,
+		},
+	}
+	producer.deliveryChan <- msgSuccess
+
+	// Send a failure message
+	msgFail := &kafka.Message{
+		TopicPartition: kafka.TopicPartition{
+			Topic:     &topic,
+			Partition: 0,
+			Offset:    0,
+			Error:     assert.AnError,
+		},
+	}
+	producer.deliveryChan <- msgFail
+
+	// Allow time for processing
+	time.Sleep(50 * time.Millisecond)
+
+	close(producer.deliveryChan)
+
+	// Restore stdout and check content
+	w.Close()
+	os.Stdout = oldStdout
+	out, _ := io.ReadAll(r)
+	output := string(out)
+
+	if !strings.Contains(output, "Message delivered to topic") {
+		t.Error("Expected success message in logs")
+	}
+	if !strings.Contains(output, "Message delivery failed") {
+		t.Error("Expected failure message in logs")
+	}
+}
+
+func TestClose(t *testing.T) {
+	cfg := NewConfig()
+	producer := New(cfg)
+	mockProducer := new(MockKafkaProducer)
+	producer.producer = mockProducer
+
+	// Flush should be called
+	mockProducer.On("Flush", mock.Anything).Return(0)
+
+	// Call Close (rawProducer is nil, but we patched Close to handle it)
+	producer.Close()
+
+	mockProducer.AssertExpectations(t)
 }

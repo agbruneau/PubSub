@@ -271,5 +271,7 @@ func (p *OrderProducer) Close() {
 	} else {
 		fmt.Println("✅ All messages sent successfully.")
 	}
-	p.rawProducer.Close()
+	if p.rawProducer != nil {
+		p.rawProducer.Close()
+	}
 }
