@@ -218,7 +218,7 @@ func (p *OrderProducer) GenerateOrder(template OrderTemplate, sequence int) mode
 // Returns:
 //   - error: An error if production fails.
 func (p *OrderProducer) ProduceOrder() error {
-	template := p.templates[p.sequence%len(p.templates)]
+	template := p.templates[(p.sequence-1)%len(p.templates)]
 	order := p.GenerateOrder(template, p.sequence)
 
 	value, err := json.Marshal(order)

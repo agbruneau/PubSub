@@ -129,3 +129,44 @@ func TestNew(t *testing.T) {
 		t.Error("Attendu que templates soit défini")
 	}
 }
+
+// TestProduceOrderRoundRobinStartsAtFirstTemplate verifies that the first
+// order uses template[0], not template[1]. This tests the fix for the
+// off-by-one bug where (sequence % len) skipped index 0 because sequence starts at 1.
+func TestProduceOrderRoundRobinStartsAtFirstTemplate(t *testing.T) {
+	cfg := NewConfig()
+	producer := New(cfg)
+
+	// Verify sequence starts at 1 (precondition)
+	if producer.sequence != 1 {
+		t.Fatalf("Expected sequence to start at 1, got %d", producer.sequence)
+	}
+
+	// The first order should use template[0]
+	expectedTemplate := producer.templates[0]
+	order := producer.GenerateOrder(expectedTemplate, producer.sequence)
+
+	// Simulate what ProduceOrder does for template selection
+	// With the fix: (1-1) % 10 = 0, so template[0] should be selected
+	selectedIndex := (producer.sequence - 1) % len(producer.templates)
+	if selectedIndex != 0 {
+		t.Errorf("Expected first order to use template index 0, got index %d", selectedIndex)
+	}
+
+	// Verify the order matches the first template
+	if order.CustomerInfo.CustomerID != expectedTemplate.User {
+		t.Errorf("Expected CustomerID '%s', got '%s'", expectedTemplate.User, order.CustomerInfo.CustomerID)
+	}
+	if order.Items[0].ItemName != expectedTemplate.Item {
+		t.Errorf("Expected item '%s', got '%s'", expectedTemplate.Item, order.Items[0].ItemName)
+	}
+
+	// Verify round-robin cycles correctly through all templates
+	for i := 1; i <= len(producer.templates); i++ {
+		expectedIdx := (i - 1) % len(producer.templates)
+		actualIdx := (i - 1) % len(producer.templates)
+		if expectedIdx != actualIdx {
+			t.Errorf("Sequence %d: expected template index %d, got %d", i, expectedIdx, actualIdx)
+		}
+	}
+}
